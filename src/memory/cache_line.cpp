@@ -11,6 +11,10 @@ CacheLine::CacheLine(int tag, int last_used) {
     this->last_used = last_used;
 }
 
+MemoryDataType& CacheLine::operator[](int offset) {
+    return this->data[offset];
+}
+
 void CacheLine::update_last_used(int time) {
     this->last_used = time;
 }

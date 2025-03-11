@@ -5,7 +5,13 @@
 
 class CacheSet {
 public:
+    CacheSet();
+
     CacheLine cache_lines[CACHE_ASSOCIATIVITY];
 
+    CacheLine* begin();
+    CacheLine* end();
+    const CacheLine* begin() const;
+    const CacheLine* end() const;
     CacheLine& operator[](int index);
 };
