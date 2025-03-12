@@ -16,7 +16,7 @@ CacheLine* CacheSet::begin() {
 }
 
 CacheLine* CacheSet::end() {
-    return this->cache_lines+CACHE_NUM_SETS;
+    return this->cache_lines+CACHE_ASSOCIATIVITY;
 }
 
 const CacheLine* CacheSet::begin() const {
@@ -24,5 +24,5 @@ const CacheLine* CacheSet::begin() const {
 }
 
 const CacheLine* CacheSet::end() const {
-    return this->cache_lines+CACHE_NUM_SETS;
+    return this->cache_lines+CACHE_ASSOCIATIVITY;
 }

@@ -7,7 +7,7 @@
 
 class Cache {
 private:
-    Memory main_memory;
+    Memory& main_memory;
     ReplacementPolicy replacement_policy;
 
     CacheSet cache_sets[CACHE_NUM_SETS];
@@ -19,7 +19,7 @@ private:
     int extract_offset(int address);
 
 public:
-    Cache(Memory& main_memory, ReplacementPolicy replacement_policy);
+    Cache(Memory& main_memory, ReplacementPolicy rp);
     MemoryDataType read_data(int address);
     void write_data(int address, MemoryDataType data);
     void show_cache();

@@ -4,6 +4,7 @@ set(SOURCES
     memory/cache.cpp
     memory/cache_line.cpp
     memory/cache_set.cpp
+    memory/utils.cpp
 )
 
 # Create a library for ISA core functionality

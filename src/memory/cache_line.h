@@ -11,6 +11,7 @@ public:
     int tag;
     MemoryDataType data[CACHE_LINE_SIZE]; // Needs to be public for GUI access
 
+    CacheLine();
     CacheLine(int tag);
     CacheLine(int tag, int last_used);
 

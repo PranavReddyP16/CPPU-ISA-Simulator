@@ -5,8 +5,6 @@
 
 class CacheSet {
 public:
-    CacheSet();
-
     CacheLine cache_lines[CACHE_ASSOCIATIVITY];
 
     CacheLine* begin();

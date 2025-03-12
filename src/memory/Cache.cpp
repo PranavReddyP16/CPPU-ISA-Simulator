@@ -2,10 +2,20 @@
 #include "cache.h"
 #include "system_constants.h"
 #include "memory.h"
+#include "utils.h"
 
-Cache::Cache(Memory& main_memory, ReplacementPolicy rp) {
-    this->main_memory = main_memory;
-    this->replacement_policy = rp;
+int clock_cycle = 0;
+
+Cache::Cache(Memory& main_memory, ReplacementPolicy rp) 
+: main_memory(main_memory), replacement_policy(rp) {
+    // Setting everything equal to 0 for printing purposes
+    for (CacheSet& cache_set : this->cache_sets) {
+        for (CacheLine& cache_line : cache_set) {
+            for (MemoryDataType &data : cache_line.data) {
+                data = int_to_mem_dtype(0);
+            }
+        }
+    }
 }
 
 int Cache::extract_offset(int address) {
@@ -27,12 +37,12 @@ void Cache::show_cache() {
     for (int set_index = 0; set_index < CACHE_NUM_SETS; set_index++) {
         std::cout << "Set number " << set_index << ":" << std::endl;
 
-        std::cout<<"    ";
         for (CacheLine cur_cache_line : this->cache_sets[set_index]) {
-            std::cout << "Tag: "<<cur_cache_line.tag << ", Data: ";
+            std::cout << "    Tag: "<<cur_cache_line.tag << ", Data: ";
             for (MemoryDataType datum : cur_cache_line.data) {
-                print_datum(datum);
+                print_data(datum);
             }
+            std::cout<<std::endl;
         }
         std::cout<<std::endl;
     }
@@ -62,6 +72,8 @@ int Cache::find_cache_line_to_evict_from_set(CacheSet cache_set) {
 
 void Cache::evict_and_replace_cache_line(CacheSet& cache_set, int cache_set_index, int starting_memory_address) {
     int eviction_index = find_cache_line_to_evict_from_set(cache_set);
+    std::cout<<"Cache line number "<<eviction_index<<" being evicted"<<std::endl;
+    std::cout<<"Starting address of new line is: "<<starting_memory_address<<std::endl;
 
     CacheLine& eviction_line = cache_set[eviction_index];
 
@@ -77,11 +89,18 @@ void Cache::evict_and_replace_cache_line(CacheSet& cache_set, int cache_set_inde
     }
 
     // Evict and repopulate
+    std::cout<<"Printing new line after evicting"<<std::endl;
     for (int i = 0; i < CACHE_LINE_SIZE; i++) {
         eviction_line[i] = this->main_memory.read_data(starting_memory_address + i);
+        std::cout<<mem_dtype_to_int(eviction_line[i])<<" ";
     }
+    std::cout<<std::endl;
+    std::cout<<std::endl;
+    eviction_line.tag = extract_tag(starting_memory_address);
     eviction_line.dirty = false;
     eviction_line.valid = true;
+    eviction_line.last_used = clock_cycle;
+    clock_cycle++;
 }
 
 MemoryDataType Cache::read_data(int address) {
@@ -94,11 +113,15 @@ MemoryDataType Cache::read_data(int address) {
     for (CacheLine &cur_cache_line : this->cache_sets[address_set_index]) {
         // Cache hit
         if (cur_cache_line.valid && address_tag == cur_cache_line.tag) {
+            std::cout<<"Cache hit for address: "<<address<<std::endl;
+            cur_cache_line.last_used = clock_cycle;
+            clock_cycle++;
             return cur_cache_line[address_offset];
         }
     }
 
     // Cache miss
+    std::cout<<"Cache miss for address: "<<address<<std::endl;
     int starting_memory_address = address - address_offset;
 
     evict_and_replace_cache_line(this->cache_sets[address_set_index], address_set_index, starting_memory_address);
@@ -117,8 +140,11 @@ void Cache::write_data(int address, MemoryDataType data) {
     for (CacheLine& cur_cache_line : this->cache_sets[address_set_index]) {
         // Cache hit
         if (cur_cache_line.valid && address_tag == cur_cache_line.tag) {
+            cur_cache_line.last_used = clock_cycle;
+            clock_cycle++;
             cur_cache_line[address_offset] = data;
             cur_cache_line.dirty = true;
+            return;
         }
     }
 

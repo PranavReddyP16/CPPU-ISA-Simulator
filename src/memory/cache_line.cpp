@@ -2,6 +2,8 @@
 #include "cache_line.h"
 #include "system_constants.h"
 
+CacheLine::CacheLine(){};
+
 CacheLine::CacheLine(int tag) {
     this->tag = tag;
 }
