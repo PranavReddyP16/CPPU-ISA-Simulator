@@ -39,7 +39,8 @@ void Cache::show_cache() {
 }
 
 int Cache::find_cache_line_to_evict_from_set(CacheSet cache_set) {
-    if (this->replacement_policy == ReplacementPolicy::LRU) {
+    // TODO uncomment this when we implement FIFO replacement policy
+    // if (this->replacement_policy == ReplacementPolicy::LRU) {
         int least_recently_used_time = 1e9+7;
         int least_recently_used_index = 0;
         for (int cache_line_index = 0; cache_line_index < CACHE_ASSOCIATIVITY; cache_line_index++) {
@@ -56,7 +57,7 @@ int Cache::find_cache_line_to_evict_from_set(CacheSet cache_set) {
         }
 
         return least_recently_used_index;
-    }
+    // }
 }
 
 void Cache::evict_and_replace_cache_line(CacheSet& cache_set, int cache_set_index, int starting_memory_address) {
