@@ -4,10 +4,10 @@
 #include "system_constants.h"
 
 class CacheLine {
-private:
-    int last_used;
-
 public:
+    bool dirty = false;
+    bool valid = false;
+    int last_used;
     int tag;
     MemoryDataType data[CACHE_LINE_SIZE]; // Needs to be public for GUI access
 

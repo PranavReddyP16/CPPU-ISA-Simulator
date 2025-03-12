@@ -6,6 +6,7 @@
 
 // Memory
 constexpr int MEMORY_ADDRESS_BITS = 32;
+// TODO increase memory
 constexpr int MEMORY_SIZE = 16 * 1024 * 1024; // 16 MB
 using MemoryDataType = std::byte;
 

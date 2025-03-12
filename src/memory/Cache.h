@@ -3,11 +3,12 @@
 #include "system_constants.h"
 #include "cache_set.h"
 #include "cache_line.h"
+#include "memory.h"
 
 class Cache {
 private:
+    Memory main_memory;
     ReplacementPolicy replacement_policy;
-    WritePolicy write_policy;
 
     CacheSet cache_sets[CACHE_NUM_SETS];
 
@@ -18,8 +19,10 @@ private:
     int extract_offset(int address);
 
 public:
-    Cache(ReplacementPolicy replacement_policy, WritePolicy write_policy);
+    Cache(Memory& main_memory, ReplacementPolicy replacement_policy);
     MemoryDataType read_data(int address);
     void write_data(int address, MemoryDataType data);
     void show_cache();
+    int find_cache_line_to_evict_from_set(CacheSet cache_set);
+    void evict_and_replace_cache_line(CacheSet& cache_set, int cache_set_index, int starting_memory_address);
 };
