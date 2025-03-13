@@ -20,9 +20,17 @@ int main(int argc, char* argv[]) {
     cout<<endl;
 
     Cache cache(mem, ReplacementPolicy::LRU);
-    cout<<"Writing data to memory"<<endl;
+    cout<<"Writing data to memory at address 500"<<endl;
     mem.write_data(500, int_to_mem_dtype(1));
     cout<<"Fetching from cache"<<endl;
+    mem.write_data(100, int_to_mem_dtype(1));
+    cout<<"Memory access attempt made while another request is still in progress! Wait!"<<endl;
+    mem.write_data(100, int_to_mem_dtype(1));
+    cout<<"Memory access attempt made while another request is still in progress! Wait!"<<endl;
+    mem.write_data(100, int_to_mem_dtype(1));
+    cout<<"Memory access attempt made while another request is still in progress! Wait!"<<endl;
+    mem.write_data(100, int_to_mem_dtype(1));
+    cout<<"Memory access attempt made while another request is still in progress! Wait!"<<endl;
     cout<<mem_dtype_to_int(cache.read_data(500))<<endl;
 
     cout<<endl;
