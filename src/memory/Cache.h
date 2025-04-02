@@ -1,9 +1,9 @@
 #pragma once
 
-#include "system_constants.h"
+#include "../../include/system_constants.h"
 #include "cache_set.h"
 #include "cache_line.h"
-#include "memory.h"
+#include "Memory.h"
 
 class Cache {
 private:

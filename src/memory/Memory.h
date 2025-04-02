@@ -1,6 +1,6 @@
 #pragma once
 
-#include "system_constants.h"
+#include "../../include/system_constants.h"
 
 // TODO check public private stuff I'm making everything public for now
 class Memory {

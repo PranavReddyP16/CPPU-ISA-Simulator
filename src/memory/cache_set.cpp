@@ -1,7 +1,7 @@
 #include <stdexcept>
 #include "cache_set.h"
 #include "cache_line.h"
-#include "system_constants.h"
+#include "../../include/system_constants.h"
 
 CacheLine& CacheSet::operator[](int index) {
     if(index >= CACHE_ASSOCIATIVITY) {

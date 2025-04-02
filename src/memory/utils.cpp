@@ -1,7 +1,8 @@
 #include <iostream>
-#include "system_constants.h"
+#include "utils.h"
+#include "../../include/system_constants.h"
 
-void print_data(MemoryDataType data, bool hex = true) {
+void print_data(MemoryDataType data, bool hex) {
     if(hex) std::cout << std::hex << std::to_integer<int>(data) << " ";
     else std::cout << std::to_integer<int>(data) << " ";
 }

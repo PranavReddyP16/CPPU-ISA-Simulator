@@ -1,7 +1,7 @@
 #include <iostream>
-#include "cache.h"
-#include "system_constants.h"
-#include "memory.h"
+#include "Cache.h"
+#include "../../include/system_constants.h"
+#include "Memory.h"
 #include "utils.h"
 
 int clock_cycle = 0;
@@ -114,6 +114,7 @@ MemoryDataType Cache::read_data(int address) {
         // Cache hit
         if (cur_cache_line.valid && address_tag == cur_cache_line.tag) {
             std::cout<<"Cache hit for address: "<<address<<std::endl;
+            std::cout << "Value at address " << address << " in cache: "<< mem_dtype_to_int(cur_cache_line[address_offset]) << std::endl;
             cur_cache_line.last_used = clock_cycle;
             clock_cycle++;
             return cur_cache_line[address_offset];
@@ -132,6 +133,7 @@ MemoryDataType Cache::read_data(int address) {
 
 void Cache::write_data(int address, MemoryDataType data) {
      // TODO Redundant code in read/write functions
+    std::cout<<"Address: "<<address<<" "<<"Data: "<<mem_dtype_to_int(data)<<std::endl;
     int address_set_index = extract_index(address);
     int address_tag = extract_tag(address);
     int address_offset = extract_offset(address);
