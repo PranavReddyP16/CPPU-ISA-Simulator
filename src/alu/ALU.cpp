@@ -1,5 +1,5 @@
 #include "ALU.h"
-#include "../../include/system_constants.h"
+#include "system_constants.h"
 
 int ALU::execute(int opcode, int operand1, int operand2, int operand3) {
     switch (opcode) {

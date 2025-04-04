@@ -1,9 +1,9 @@
 #pragma once
-#include "../../include/system_constants.h"
+#include "system_constants.h"
 #include "pipeline_registers.h"
-#include "../memory/Register.h"
-#include "../memory/Memory.h"
-#include "../memory/Cache.h"
+#include "memory/Register.h"
+#include "memory/Memory.h"
+#include "memory/Cache.h"
 
 class five_stage_pipeline{
     public:

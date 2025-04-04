@@ -1,10 +1,15 @@
 # Define sources for the ISA core library
 set(SOURCES
-    memory/memory.cpp
-    memory/cache.cpp
+    memory/Memory.cpp
+    memory/Cache.cpp
+    memory/Register.cpp
     memory/cache_line.cpp
     memory/cache_set.cpp
     memory/utils.cpp
+    pipeline/five_stage_pipeline.cpp
+    pipeline/instruction_helpers.cpp
+    alu/ALU.cpp
+    gui/mainwindow.cpp
 )
 
 # Create a library for ISA core functionality

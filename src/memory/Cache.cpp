@@ -1,6 +1,6 @@
 #include <iostream>
 #include "Cache.h"
-#include "../../include/system_constants.h"
+#include "system_constants.h"
 #include "Memory.h"
 #include "utils.h"
 

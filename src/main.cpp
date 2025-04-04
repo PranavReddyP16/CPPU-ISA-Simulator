@@ -1,9 +1,12 @@
-#include<iostream>
-#include "../include/system_constants.h"
+#include <iostream>
+#include "system_constants.h"
 #include "memory/Memory.h"
 #include "memory/utils.h"
 #include "memory/Cache.h"
 #include "pipeline/five_stage_pipeline.h"
+
+#include <QApplication>
+#include "gui/mainwindow.h"
 
 using namespace std;
 
@@ -88,7 +91,10 @@ int main(int argc, char* argv[]) {
     pipeline.run_pipeline();
 
     cout << "Pipeline execution completed." << endl;
-    return 0;
 
-    
+    QApplication app(argc, argv);
+    MainWindow mainWindow;
+    mainWindow.show();
+
+    return app.exec();
 }

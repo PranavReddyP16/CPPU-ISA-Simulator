@@ -1,11 +1,11 @@
 #include "five_stage_pipeline.h"
-#include "../../include/system_constants.h"
+#include "system_constants.h"
 #include "instruction_helpers.h"
-#include "../alu/ALU.h"
-#include "../memory/Register.h"
-#include "../memory/Memory.h"
-#include "../memory/Cache.h"
-#include "../memory/utils.h"
+#include "alu/ALU.h"
+#include "memory/Register.h"
+#include "memory/Memory.h"
+#include "memory/Cache.h"
+#include "memory/utils.h"
 #include <iostream>
 
 

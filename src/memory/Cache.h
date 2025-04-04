@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../include/system_constants.h"
+#include "system_constants.h"
 #include "cache_set.h"
 #include "cache_line.h"
 #include "Memory.h"

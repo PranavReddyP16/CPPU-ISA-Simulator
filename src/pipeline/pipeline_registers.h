@@ -1,5 +1,5 @@
 #pragma once
-#include "../memory/Register.h"
+#include "memory/Register.h"
 
 struct if_id_reg{
     int instruction;

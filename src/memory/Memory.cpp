@@ -1,5 +1,5 @@
 #include "Memory.h"
-#include "../../include/system_constants.h"
+#include "system_constants.h"
 
 MemoryDataType Memory::read_data(int address) {
     return this->data[address];

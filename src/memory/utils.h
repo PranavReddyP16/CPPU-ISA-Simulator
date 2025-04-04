@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../include/system_constants.h"
+#include "system_constants.h"
 
 extern void print_data(MemoryDataType data, bool hex=true);
 
