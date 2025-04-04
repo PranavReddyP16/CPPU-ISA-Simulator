@@ -1,3 +1,5 @@
+set(CMAKE_AUTOMOC ON)
+
 # Define sources for the ISA core library
 set(SOURCES
     memory/Memory.cpp
@@ -9,7 +11,6 @@ set(SOURCES
     pipeline/five_stage_pipeline.cpp
     pipeline/instruction_helpers.cpp
     alu/ALU.cpp
-    gui/mainwindow.cpp
 )
 
 # Create a library for ISA core functionality
@@ -22,7 +23,7 @@ target_include_directories(isa_core PUBLIC
 )
 
 # Define the main ISA simulator executable
-add_executable(ISA_Simulator main.cpp)
+add_executable(ISA_Simulator main.cpp gui/mainwindow.cpp)
 
 # Link the executable with the ISA core library
 target_link_libraries(ISA_Simulator PRIVATE isa_core)
