@@ -1,2 +1,0 @@
-/Library/Developer/CommandLineTools/usr/bin/ar qc libisa_core.a CMakeFiles/isa_core.dir/memory/Memory.cpp.o CMakeFiles/isa_core.dir/memory/Cache.cpp.o CMakeFiles/isa_core.dir/memory/cache_line.cpp.o CMakeFiles/isa_core.dir/memory/cache_set.cpp.o CMakeFiles/isa_core.dir/memory/utils.cpp.o CMakeFiles/isa_core.dir/memory/Register.cpp.o CMakeFiles/isa_core.dir/pipeline/five_stage_pipeline.cpp.o CMakeFiles/isa_core.dir/pipeline/instruction_helpers.cpp.o CMakeFiles/isa_core.dir/alu/ALU.cpp.o
-/Library/Developer/CommandLineTools/usr/bin/ranlib libisa_core.a
