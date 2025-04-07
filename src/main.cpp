@@ -70,15 +70,19 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    QApplication app(argc, argv);
+    MainWindow mainWindow;
+    mainWindow.show();
+
     // Convert the command-line argument to an integer instruction
     int instruction = std::stoi(argv[1]);
 
     cout << "Main program has started" << endl;
     cout << "Creating memory" << endl;
-    Memory mem;
+    Memory mem(&mainWindow);
     
     cout << "Creating cache" << endl;
-    Cache cache(mem, ReplacementPolicy::LRU);
+    Cache cache(mem, ReplacementPolicy::LRU, &mainWindow);
 
     // Write instruction to memory at address 0
     cout << "Writing instruction " << instruction<<":"<<mem_dtype_to_int(int_to_mem_dtype(instruction)) << " to memory address 0x1000" << endl;
@@ -87,14 +91,14 @@ int main(int argc, char* argv[]) {
 
     // Instantiate pipeline and run it
     cout << "Initializing and running pipeline..." << endl;
-    five_stage_pipeline pipeline(cache);
+    five_stage_pipeline pipeline(cache, &mainWindow);
     pipeline.run_pipeline();
 
     cout << "Pipeline execution completed." << endl;
 
-    QApplication app(argc, argv);
-    MainWindow mainWindow;
-    mainWindow.show();
-
     return app.exec();
+}
+
+void run_pipeline() {
+
 }

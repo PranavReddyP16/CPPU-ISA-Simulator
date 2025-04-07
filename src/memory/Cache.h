@@ -4,6 +4,7 @@
 #include "cache_set.h"
 #include "cache_line.h"
 #include "Memory.h"
+#include "gui/mainwindow.h"
 
 class Cache {
 private:
@@ -18,8 +19,10 @@ private:
     int extract_index(int address);
     int extract_offset(int address);
 
+    MainWindow* mainWindow;
+
 public:
-    Cache(Memory& main_memory, ReplacementPolicy rp);
+    Cache(Memory& main_memory, ReplacementPolicy rp, MainWindow* mainWindow);
     MemoryDataType read_data(int address);
     void write_data(int address, MemoryDataType data);
     void show_cache();

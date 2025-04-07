@@ -1,6 +1,7 @@
 #pragma once
 
 #include "system_constants.h"
+#include "gui/mainwindow.h"
 
 class Register {
 public:
@@ -14,7 +15,7 @@ public:
     int GPR[8];     // General Purpose Registers R0 - R7
     float FPR[8];   // Floating Point Registers F0 - F7
 
-    Register();    
+    Register(MainWindow* mainWindow);
     void reset();   
 
     // Instruction Fetch
@@ -39,4 +40,7 @@ public:
     // Status Register
     void update_status(int flag);
     int get_status() const;
+
+private:
+    MainWindow* mainWindow;
 };

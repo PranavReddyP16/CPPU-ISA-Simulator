@@ -29,4 +29,5 @@ add_executable(ISA_Simulator main.cpp gui/mainwindow.cpp)
 target_link_libraries(ISA_Simulator PRIVATE isa_core)
 
 # If Qt6 is needed, keep this line; otherwise, remove it.
+target_link_libraries(isa_core PRIVATE Qt6::Widgets)
 target_link_libraries(ISA_Simulator PRIVATE Qt6::Widgets)

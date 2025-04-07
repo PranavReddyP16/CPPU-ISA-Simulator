@@ -9,7 +9,7 @@
 #include <iostream>
 
 
-five_stage_pipeline::five_stage_pipeline(Cache& cache): cache(cache){
+five_stage_pipeline::five_stage_pipeline(Cache& cache, MainWindow* mainWindow): cache(cache), mainWindow(mainWindow), registers(mainWindow) {
     if_id = {0, 0};  // PC = 0, instruction = 0
     if_id.PC = 0x1000;
     id_ex = {0, 0, 0, 0, 0};  // Default values for opcode, registers

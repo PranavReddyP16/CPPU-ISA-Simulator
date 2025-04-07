@@ -4,6 +4,7 @@
 #include "memory/Register.h"
 #include "memory/Memory.h"
 #include "memory/Cache.h"
+#include "gui/mainwindow.h"
 
 class five_stage_pipeline{
     public:
@@ -14,7 +15,7 @@ class five_stage_pipeline{
         ex_mem_reg ex_mem;
         mem_wb_reg mem_wb;
 
-        five_stage_pipeline(Cache& cache);
+        five_stage_pipeline(Cache& cache, MainWindow* mainWindow);
 
         
 
@@ -25,4 +26,6 @@ class five_stage_pipeline{
         void writeback();
 
         void run_pipeline();
+    private:
+        MainWindow* mainWindow;
 };

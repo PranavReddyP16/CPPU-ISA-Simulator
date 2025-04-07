@@ -1,6 +1,10 @@
 #include "Memory.h"
 #include "system_constants.h"
 
+Memory::Memory(MainWindow* mainWindow) {
+    this->mainWindow = mainWindow;
+ }
+
 MemoryDataType Memory::read_data(int address) {
     return this->data[address];
 }

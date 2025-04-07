@@ -6,8 +6,8 @@
 
 int clock_cycle = 0;
 
-Cache::Cache(Memory& main_memory, ReplacementPolicy rp) 
-: main_memory(main_memory), replacement_policy(rp) {
+Cache::Cache(Memory& main_memory, ReplacementPolicy rp, MainWindow* mainWindow) 
+: main_memory(main_memory), replacement_policy(rp), mainWindow(mainWindow) {
     // Setting everything equal to 0 for printing purposes
     for (CacheSet& cache_set : this->cache_sets) {
         for (CacheLine& cache_line : cache_set) {
