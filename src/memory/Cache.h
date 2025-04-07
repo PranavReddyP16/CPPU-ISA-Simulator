@@ -28,4 +28,7 @@ public:
     void show_cache();
     int find_cache_line_to_evict_from_set(CacheSet cache_set);
     void evict_and_replace_cache_line(CacheSet& cache_set, int cache_set_index, int starting_memory_address);
+
+private:
+    void update_gui();
 };

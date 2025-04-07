@@ -16,6 +16,8 @@ Cache::Cache(Memory& main_memory, ReplacementPolicy rp, MainWindow* mainWindow)
             }
         }
     }
+
+    update_gui();
 }
 
 int Cache::extract_offset(int address) {
@@ -158,4 +160,36 @@ void Cache::write_data(int address, MemoryDataType data) {
     // Calling the function again should now write the newly populated cache value
     write_data(address, data);
    
+    update_gui();
+}
+
+void Cache::update_gui() {
+    // Calculate the total number of rows (one row per cache line)
+    int total_rows = CACHE_NUM_SETS * CACHE_ASSOCIATIVITY;
+    mainWindow->cacheTable->setRowCount(total_rows);
+
+    int row = 0; // Row index for the table
+    for (int set_index = 0; set_index < CACHE_NUM_SETS; set_index++) {
+        for (int line_index = 0; line_index < CACHE_ASSOCIATIVITY; line_index++) {
+            CacheLine& cache_line = this->cache_sets[set_index][line_index];
+
+            // Set column: Display the set index
+            mainWindow->cacheTable->setItem(row, 0, new QTableWidgetItem(QString::number(set_index)));
+
+            // Tag column: Display the tag of the cache line
+            mainWindow->cacheTable->setItem(row, 1, new QTableWidgetItem(QString::number(cache_line.tag)));
+
+            // Block Data column: Display the data in the cache line
+            QString block_data;
+            for (int i = 0; i < CACHE_LINE_SIZE; i++) {
+                block_data += QString::number(mem_dtype_to_int(cache_line.data[i]));
+                if (i < CACHE_LINE_SIZE - 1) {
+                    block_data += ", "; // Separate data values with a comma
+                }
+            }
+            mainWindow->cacheTable->setItem(row, 2, new QTableWidgetItem(block_data));
+
+            row++; // Move to the next row
+        }
+    }
 }

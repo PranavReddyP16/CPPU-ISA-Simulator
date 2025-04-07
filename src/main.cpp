@@ -6,6 +6,8 @@
 #include "pipeline/five_stage_pipeline.h"
 
 #include <QApplication>
+#include <QTimer>
+#include <QtConcurrent>
 #include "gui/mainwindow.h"
 
 using namespace std;
@@ -65,40 +67,82 @@ int main(int argc, char* argv[]) {
     // cache.show_cache();
     // cout<<"Now, since the cache line was evicted and it had the dirty bit set, the memory at address 500 has been written and is: "<<mem_dtype_to_int(mem.read_data(500))<<endl;
 
-    if (argc < 2) {
-        cerr << "Usage: " << argv[0] << " <instruction (integer)>" << endl;
-        return 1;
-    }
-
     QApplication app(argc, argv);
     MainWindow mainWindow;
     mainWindow.show();
 
-    // Convert the command-line argument to an integer instruction
-    int instruction = std::stoi(argv[1]);
+    QTimer::singleShot(1, [&mainWindow]() { QtConcurrent::run([&mainWindow]() {
+        cout << "Main program has started" << endl;
+        cout << "Creating memory" << endl;
+        Memory mem(&mainWindow);
+        
+        cout << "Creating cache" << endl;
+        Cache cache(mem, ReplacementPolicy::LRU,&mainWindow);
+        int instruction = 63;
+        cache.write_data(1, int_to_mem_dtype(instruction));
+        cache.read_data(0);
+        cache.read_data(1);
+        cache.read_data(2);
+        cache.read_data(3);
+        cout << "Initializing and running pipeline..." << endl;
+        five_stage_pipeline pipeline_1(cache,&mainWindow);
+        pipeline_1.run_pipeline();
+        cout << "Pipeline execution completed." << endl;
 
-    cout << "Main program has started" << endl;
-    cout << "Creating memory" << endl;
-    Memory mem(&mainWindow);
-    
-    cout << "Creating cache" << endl;
-    Cache cache(mem, ReplacementPolicy::LRU, &mainWindow);
+        // Cache cache(mem, ReplacementPolicy::LRU);
+        instruction = 127;
+        cache.write_data(1, int_to_mem_dtype(instruction));
+        cache.read_data(0);
+        cache.read_data(1);
+        cache.read_data(2);
+        cache.read_data(3);
+        cout << "Initializing and running pipeline..." << endl;
+        // five_stage_pipeline pipeline_2(cache);
+        pipeline_1.run_pipeline();
+        cout << "Pipeline execution completed." << endl;
 
-    // Write instruction to memory at address 0
-    cout << "Writing instruction " << instruction<<":"<<mem_dtype_to_int(int_to_mem_dtype(instruction)) << " to memory address 0x1000" << endl;
-    cache.write_data(4096, int_to_mem_dtype(instruction));
-    std::cout << "After write: " << mem_dtype_to_int(cache.read_data(4096)) << std::endl;
+        instruction = 191;
+        cache.write_data(1, int_to_mem_dtype(instruction));
+        cache.read_data(0);
+        cache.read_data(1);
+        cache.read_data(2);
+        cache.read_data(3);
+        cout << "Initializing and running pipeline..." << endl;
+        // five_stage_pipeline pipeline_3(cache);
+        pipeline_1.run_pipeline();
+        cout << "Pipeline execution completed." << endl;
+        // instruction = 2;
+        // cache.write_data(2, int_to_mem_dtype(instruction));
+        // cout << "Initializing and running pipeline..." << endl;
+        // five_stage_pipeline pipeline_2(cache);
+        // pipeline_2.run_pipeline();
+        // cout << "Pipeline execution completed." << endl;
 
-    // Instantiate pipeline and run it
-    cout << "Initializing and running pipeline..." << endl;
-    five_stage_pipeline pipeline(cache, &mainWindow);
-    pipeline.run_pipeline();
 
-    cout << "Pipeline execution completed." << endl;
+        // instruction = std::stoi(argv[1]);
+        // instruction = 3;
+        // cache.write_data(3, int_to_mem_dtype(instruction));
+        // cout << "Initializing and running pipeline..." << endl;
+        // five_stage_pipeline pipeline_3(cache);
+        // pipeline_3.run_pipeline();
+        // cout << "Pipeline execution completed." << endl;
 
+
+        // Write instruction to memory at address 0
+        // cout << "Writing instruction " << instruction<<":"<<mem_dtype_to_int(int_to_mem_dtype(instruction)) << " to memory address 0x1000" << endl;
+        // cache.write_data(4096, int_to_mem_dtype(instruction));
+        // std::cout << "After write: " << mem_dtype_to_int(cache.read_data(4096)) << std::endl;
+
+        // Instantiate pipeline and run it
+        
+        // five_stage_pipeline pipeline(cache);
+        // pipeline.run_pipeline();
+        cache.read_data(0);
+        cache.read_data(1);
+        cache.read_data(2);
+        cache.read_data(3);
+        cout << "Pipeline execution completed." << endl;
+    }); });
+ 
     return app.exec();
-}
-
-void run_pipeline() {
-
 }

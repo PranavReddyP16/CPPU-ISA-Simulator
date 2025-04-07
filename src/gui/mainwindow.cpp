@@ -30,10 +30,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QVBoxLayout *layout = new QVBoxLayout(centralWidget);
     centralWidget->setLayout(layout);
 
-    instructionTable = new QTableWidget(this);
-    instructionTable->setColumnCount(3);
-    instructionTable->setHorizontalHeaderLabels({"Address", "Instruction", "Pipeline Stage"});
-    layout->addWidget(instructionTable);
+    pipelineTable = new QTableWidget(this);
+    pipelineTable->setColumnCount(5);
+    pipelineTable->setHorizontalHeaderLabels({"fetch", "decode", "execute", "mem_stage", "writeback"});
+    pipelineTable->setRowCount(1);
+    layout->addWidget(pipelineTable);
 
     registerTable = new QTableWidget(this);
     registerTable->setColumnCount(2);
@@ -92,7 +93,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     cacheTable = new QTableWidget(this);
     cacheTable->setColumnCount(3);
-    cacheTable->setHorizontalHeaderLabels({"Cache Address", "Data", "Status"});
+    cacheTable->setHorizontalHeaderLabels({"Set", "Tag", "Block Data"});
     layout->addWidget(cacheTable);
 
     QPushButton *tickButton = new QPushButton("Tick", this);
