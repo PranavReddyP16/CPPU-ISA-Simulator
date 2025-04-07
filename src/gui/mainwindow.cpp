@@ -30,17 +30,67 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QVBoxLayout *layout = new QVBoxLayout(centralWidget);
     centralWidget->setLayout(layout);
 
-    QTableWidget *instructionTable = new QTableWidget(this);
+    instructionTable = new QTableWidget(this);
     instructionTable->setColumnCount(3);
     instructionTable->setHorizontalHeaderLabels({"Address", "Instruction", "Pipeline Stage"});
     layout->addWidget(instructionTable);
 
-    QTableWidget *memoryTable = new QTableWidget(this);
+    registerTable = new QTableWidget(this);
+    registerTable->setColumnCount(2);
+    registerTable->setHorizontalHeaderLabels({"Register", "Value"});
+    registerTable->setRowCount(22);
+    registerTable->setItem(0, 0, new QTableWidgetItem("PC"));
+    registerTable->setItem(0, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(1, 0, new QTableWidgetItem("IR"));
+    registerTable->setItem(1, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(2, 0, new QTableWidgetItem("SP"));
+    registerTable->setItem(2, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(3, 0, new QTableWidgetItem("BP"));
+    registerTable->setItem(3, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(4, 0, new QTableWidgetItem("RA"));
+    registerTable->setItem(4, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(5, 0, new QTableWidgetItem("SR"));
+    registerTable->setItem(5, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(6, 0, new QTableWidgetItem("GPR[0]"));
+    registerTable->setItem(6, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(7, 0, new QTableWidgetItem("GPR[1]"));
+    registerTable->setItem(7, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(8, 0, new QTableWidgetItem("GPR[2]"));
+    registerTable->setItem(8, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(9, 0, new QTableWidgetItem("GPR[3]"));
+    registerTable->setItem(9, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(10, 0, new QTableWidgetItem("GPR[4]"));
+    registerTable->setItem(10, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(11, 0, new QTableWidgetItem("GPR[5]"));
+    registerTable->setItem(11, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(12, 0, new QTableWidgetItem("GPR[6]"));
+    registerTable->setItem(12, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(13, 0, new QTableWidgetItem("GPR[7]"));
+    registerTable->setItem(13, 1, new QTableWidgetItem("0"));
+    registerTable->setItem(14, 0, new QTableWidgetItem("FPR[0]"));
+    registerTable->setItem(14, 1, new QTableWidgetItem("0.0"));
+    registerTable->setItem(15, 0, new QTableWidgetItem("FPR[1]"));
+    registerTable->setItem(15, 1, new QTableWidgetItem("0.0"));
+    registerTable->setItem(16, 0, new QTableWidgetItem("FPR[2]"));
+    registerTable->setItem(16, 1, new QTableWidgetItem("0.0"));
+    registerTable->setItem(17, 0, new QTableWidgetItem("FPR[3]"));
+    registerTable->setItem(17, 1, new QTableWidgetItem("0.0"));
+    registerTable->setItem(18, 0, new QTableWidgetItem("FPR[4]"));
+    registerTable->setItem(18, 1, new QTableWidgetItem("0.0"));
+    registerTable->setItem(19, 0, new QTableWidgetItem("FPR[5]"));
+    registerTable->setItem(19, 1, new QTableWidgetItem("0.0"));
+    registerTable->setItem(20, 0, new QTableWidgetItem("FPR[6]"));
+    registerTable->setItem(20, 1, new QTableWidgetItem("0.0"));
+    registerTable->setItem(21, 0, new QTableWidgetItem("FPR[7]"));
+    registerTable->setItem(21, 1, new QTableWidgetItem("0.0"));
+    layout->addWidget(registerTable);
+
+    memoryTable = new QTableWidget(this);
     memoryTable->setColumnCount(2);
     memoryTable->setHorizontalHeaderLabels({"Address", "Data"});
     layout->addWidget(memoryTable);
 
-    QTableWidget *cacheTable = new QTableWidget(this);
+    cacheTable = new QTableWidget(this);
     cacheTable->setColumnCount(3);
     cacheTable->setHorizontalHeaderLabels({"Cache Address", "Data", "Status"});
     layout->addWidget(cacheTable);
@@ -54,3 +104,29 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 }
 
 MainWindow::~MainWindow() {}
+
+void MainWindow::setRegisterValue(char* reg, int value) {
+    for (int i = 0; i < registerTable->rowCount(); ++i) {
+        QTableWidgetItem *item = registerTable->item(i, 0);
+        if (item && QString(item->text()).compare(QString(reg)) == 0) {
+            registerTable->setItem(i, 1, new QTableWidgetItem(QString("%1").arg(value)));
+            return;
+        }
+    }
+    // If we reach here, the register was not found, you may want to handle this case
+    QMessageBox::warning(this, "Error", QString("Register %1 not found.").arg(QString(reg)));
+    return;
+}
+
+void MainWindow::setRegisterValue(char* reg, float value) {
+    for (int i = 0; i < registerTable->rowCount(); ++i) {
+        QTableWidgetItem *item = registerTable->item(i, 0);
+        if (item && QString(item->text()).compare(QString(reg)) == 0) {
+            registerTable->setItem(i, 1, new QTableWidgetItem(QString("%1").arg(value)));
+            return;
+        }
+    }
+    // If we reach here, the register was not found, you may want to handle this case
+    QMessageBox::warning(this, "Error", QString("Register %1 not found.").arg(QString(reg)));
+    return;
+}
