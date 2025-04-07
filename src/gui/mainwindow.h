@@ -13,7 +13,6 @@ public:
     void setRegisterValue(char* reg, int value);
     void setRegisterValue(char* reg, float value);
 
-private:
     QTableWidget *instructionTable;
     QTableWidget *registerTable;
     QTableWidget *memoryTable;
