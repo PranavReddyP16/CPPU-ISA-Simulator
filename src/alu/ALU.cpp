@@ -52,7 +52,7 @@ int ALU::execute(int opcode, int operand1, int operand2, int operand3, int flag)
                                : (operand1 << operand2);                     // Arithmetic same for left
 
         case 0b011011: // RSHIFT
-            return (flag == 0) ? (unsigned int(operand1) >> operand2)        // Logical
+            return (flag == 0) ? (operand1 >> operand2)                         // Logical
                                : (operand1 >> operand2);                     // Arithmetic (preserves sign)
 
         case 0b011100: return operand1 | (1 << operand2);                    // SETBIT
