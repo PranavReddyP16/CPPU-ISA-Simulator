@@ -9,7 +9,7 @@ constexpr int MEMORY_ADDRESS_BITS = 32;
 // TODO increase memory
 // constexpr int MEMORY_SIZE = 512 * 1024; // 512 KB
 constexpr int MEMORY_SIZE = 1024; // 1 KB for demo
-using MemoryDataType = std::byte;
+using MemoryDataType = std::int64_t;
 
 // Cache
 // Note: keep all of these powers of 2 to make it easier

@@ -3,6 +3,10 @@
 
 int ALU::execute(int opcode, int operand1, int operand2, int operand3) {
     switch (opcode) {
+        case 0b0000: return operand1 + operand2;
+        case 0b0001: return operand1 - operand2;
+        case 0b0010: return operand1 * operand2;
+        case 0b0011: return operand1 / operand2;
         case 0b010001: return operand1 + operand2; // ADD
         case 0b010011: return operand1 - operand2; // SUB
         case 0b010100: return operand1 * operand2; // MUL

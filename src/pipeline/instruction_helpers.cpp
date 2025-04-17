@@ -5,7 +5,7 @@
 int extract_opcode(int instruction) {
     std::cout << "Instruction: " << instruction << std::endl;  // Add this line to print the full instruction
     // int opcode = (instruction >> 26) & 0x3F;
-    int opcode = (instruction>>6) & 0x3;
+    int opcode = (instruction>>12) & 0xF;
     std::cout << "Opcode: " << opcode << std::endl;
     return opcode;
 }
@@ -14,7 +14,7 @@ int extract_opcode(int instruction) {
 // Extract the 3-bit rs1 register (bits 21-23)
 int extract_rs1(int instruction) {
     // int rs1 = (instruction >> 21) & 0x7;  // Extract register 1 (next 3 bits)
-    int rs1 = (instruction>>4) & 0x3;
+    int rs1 = (instruction>>8) & 0xF;
     std::cout << "RS1: " << rs1 << std::endl;
     return rs1;
 }
@@ -22,7 +22,7 @@ int extract_rs1(int instruction) {
 // Extract the 3-bit rs2 register (bits 18-20)
 int extract_rs2(int instruction) {
     // int rs2 = (instruction >> 18) & 0x7;  // Extract register 2 (next 3 bits)
-    int rs2 = (instruction>>2) & 0x3;
+    int rs2 = (instruction>>4) & 0xF;
     std::cout << "RS2: " << rs2 << std::endl;
     return rs2;
 }
@@ -30,7 +30,7 @@ int extract_rs2(int instruction) {
 // Extract the 5-bit rd register (bits 13-17)
 int extract_rd(int instruction) {
     // int rd = (instruction >> 13) & 0x1F; // Extract destination register (next 5 bits)
-    int rd = (instruction) & 0x3;
+    int rd = (instruction) & 0xF;
     std::cout << "RD: " << rd << std::endl;
     return rd;
 }

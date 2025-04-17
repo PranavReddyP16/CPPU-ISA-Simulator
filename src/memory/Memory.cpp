@@ -23,7 +23,7 @@ void Memory::update_gui() {
     mainWindow->memoryTable->setRowCount(MEMORY_SIZE);
     for (int i = 0; i < MEMORY_SIZE; i++) {
         // Assuming MemoryDataType is int for simplicity, change accordingly
-        std::byte value = this->data[i]; // or however you want to display it
+        std::int64_t value = this->data[i]; // or however you want to display it
         mainWindow->memoryTable->setItem(i, 0, new QTableWidgetItem(QString::number(i)));
         mainWindow->memoryTable->setItem(i, 1, new QTableWidgetItem(QString::number(static_cast<int>(value))));
     }

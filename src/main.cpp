@@ -78,70 +78,28 @@ int main(int argc, char* argv[]) {
         
         cout << "Creating cache" << endl;
         Cache cache(mem, ReplacementPolicy::LRU,&mainWindow);
-        int instruction = 63;
-        cache.write_data(1, int_to_mem_dtype(instruction));
-        cache.read_data(0);
-        cache.read_data(1);
-        cache.read_data(2);
-        cache.read_data(3);
-        cout << "Initializing and running pipeline..." << endl;
-        five_stage_pipeline pipeline_1(cache,&mainWindow);
-        pipeline_1.run_pipeline();
-        cout << "Pipeline execution completed." << endl;
-
-        // Cache cache(mem, ReplacementPolicy::LRU);
-        instruction = 127;
-        cache.write_data(1, int_to_mem_dtype(instruction));
-        cache.read_data(0);
-        cache.read_data(1);
-        cache.read_data(2);
-        cache.read_data(3);
-        cout << "Initializing and running pipeline..." << endl;
-        // five_stage_pipeline pipeline_2(cache);
-        pipeline_1.run_pipeline();
-        cout << "Pipeline execution completed." << endl;
-
-        instruction = 191;
-        cache.write_data(1, int_to_mem_dtype(instruction));
-        cache.read_data(0);
-        cache.read_data(1);
-        cache.read_data(2);
-        cache.read_data(3);
-        cout << "Initializing and running pipeline..." << endl;
-        // five_stage_pipeline pipeline_3(cache);
-        pipeline_1.run_pipeline();
-        cout << "Pipeline execution completed." << endl;
-        // instruction = 2;
-        // cache.write_data(2, int_to_mem_dtype(instruction));
-        // cout << "Initializing and running pipeline..." << endl;
-        // five_stage_pipeline pipeline_2(cache);
-        // pipeline_2.run_pipeline();
-        // cout << "Pipeline execution completed." << endl;
-
-
-        // instruction = std::stoi(argv[1]);
-        // instruction = 3;
-        // cache.write_data(3, int_to_mem_dtype(instruction));
-        // cout << "Initializing and running pipeline..." << endl;
-        // five_stage_pipeline pipeline_3(cache);
-        // pipeline_3.run_pipeline();
-        // cout << "Pipeline execution completed." << endl;
-
-
-        // Write instruction to memory at address 0
-        // cout << "Writing instruction " << instruction<<":"<<mem_dtype_to_int(int_to_mem_dtype(instruction)) << " to memory address 0x1000" << endl;
-        // cache.write_data(4096, int_to_mem_dtype(instruction));
-        // std::cout << "After write: " << mem_dtype_to_int(cache.read_data(4096)) << std::endl;
-
-        // Instantiate pipeline and run it
         
-        // five_stage_pipeline pipeline(cache);
-        // pipeline.run_pipeline();
-        cache.read_data(0);
-        cache.read_data(1);
-        cache.read_data(2);
-        cache.read_data(3);
+
+        int program[] = {
+            4083,    // opcode:0000 rs1:1111 rs2:1111 rd:0011
+            8179,   // opcode:0001 rs1:1111 rs2:1111 rd:0011
+            9011,   // opcode:0010 rs1:0011 rs2:0011 rd:0011
+            255    // HALT (0b11111111)
+        };
+        
+        for (int i = 0; i < 5; i++)
+            cache.write_data(i+4, int_to_mem_dtype(program[i]));
+        
+        five_stage_pipeline pipeline(cache, &mainWindow);
+        pipeline.run_pipeline();
+
+
+        
+        for(int i=0;i<16;i++){
+            cache.read_data(i);
+        }
         cout << "Pipeline execution completed." << endl;
+       
     }); });
  
     return app.exec();

@@ -19,9 +19,9 @@ public:
 
     void update_last_used(int time);
 
-    template<typename T = uint8_t>
+    template<typename T = uint64_t>
     MemoryDataType read_data(T offset);
 
-    template<typename T = uint8_t>
+    template<typename T = uint64_t>
     void write_data(T offset, MemoryDataType data);
 };
