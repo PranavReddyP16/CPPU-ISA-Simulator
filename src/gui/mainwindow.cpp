@@ -3,6 +3,8 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 #include <QTableWidget>
+#include <QCheckBox>
+#include <QLineEdit>
 #include <QPushButton>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
@@ -29,6 +31,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setCentralWidget(centralWidget);
     QVBoxLayout *layout = new QVBoxLayout(centralWidget);
     centralWidget->setLayout(layout);
+
+    // Cache Enable
+    QCheckBox *cacheEnableCheckbox = new QCheckBox("Cache Enable", this);
+    cacheEnableCheckbox->setChecked(true);
+    layout->addWidget(cacheEnableCheckbox);
+
+    // Pipeline Enable
+    QCheckBox *pipelineEnableCheckbox = new QCheckBox("Pipeline Enable", this);
+    pipelineEnableCheckbox->setChecked(true);
+    layout->addWidget(pipelineEnableCheckbox);
+
+    // Add a text field to display the current cycle count
+    cycleCount = new QLineEdit(this);
+    cycleCount->setReadOnly(true);
+    cycleCount->setText("0");
+    layout->addWidget(cycleCount);
 
     pipelineTable = new QTableWidget(this);
     pipelineTable->setColumnCount(5);
