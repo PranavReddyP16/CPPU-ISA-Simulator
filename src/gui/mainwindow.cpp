@@ -39,7 +39,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Pipeline Enable
     QCheckBox *pipelineEnableCheckbox = new QCheckBox("Pipeline Enable", this);
-    pipelineEnableCheckbox->setChecked(true);
+    pipelineEnableCheckbox->setChecked(false);
     layout->addWidget(pipelineEnableCheckbox);
 
     // Add a text field to display the current cycle count
