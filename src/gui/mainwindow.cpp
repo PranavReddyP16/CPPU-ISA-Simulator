@@ -32,21 +32,67 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QVBoxLayout *layout = new QVBoxLayout(centralWidget);
     centralWidget->setLayout(layout);
 
-    // Cache Enable
-    QCheckBox *cacheEnableCheckbox = new QCheckBox("Cache Enable", this);
-    cacheEnableCheckbox->setChecked(true);
-    layout->addWidget(cacheEnableCheckbox);
+    // Horizontal layout for checkboxes
+    QHBoxLayout *checkboxLayout = new QHBoxLayout();
 
-    // Pipeline Enable
-    QCheckBox *pipelineEnableCheckbox = new QCheckBox("Pipeline Enable", this);
-    pipelineEnableCheckbox->setChecked(false);
-    layout->addWidget(pipelineEnableCheckbox);
+        // Cache Enable
+        QCheckBox *cacheEnableCheckbox = new QCheckBox("Cache Enable", this);
+        cacheEnableCheckbox->setChecked(true);
+        checkboxLayout->addWidget(cacheEnableCheckbox);
+        
+        // Pipeline Enable
+        QCheckBox *pipelineEnableCheckbox = new QCheckBox("Pipeline Enable", this);
+        pipelineEnableCheckbox->setChecked(false);
+        checkboxLayout->addWidget(pipelineEnableCheckbox);
+        
+    checkboxLayout->addStretch();
+    checkboxLayout->setAlignment(Qt::AlignRight);
+    layout->addLayout(checkboxLayout);
 
     // Add a text field to display the current cycle count
     cycleCount = new QLineEdit(this);
     cycleCount->setReadOnly(true);
     cycleCount->setText("0");
     layout->addWidget(cycleCount);
+
+    // Horizontal layout for control buttons
+
+    QHBoxLayout *controlButtonsLayout = new QHBoxLayout();
+        // Add Run button
+        QPushButton *runButton = new QPushButton("Run", this);
+        connect(runButton, &QPushButton::clicked, [this]() {
+            // Placeholder for run functionality
+            QMessageBox::information(this, "Run", "Run button clicked. Implement the run logic here.");
+        });
+        controlButtonsLayout->addWidget(runButton);
+
+        // Add Pause button
+        QPushButton *pauseButton = new QPushButton("Pause", this);
+        connect(pauseButton, &QPushButton::clicked, [this]() {
+            // Placeholder for pause functionality
+            QMessageBox::information(this, "Pause", "Pause button clicked. Implement the pause logic here.");
+        });
+        controlButtonsLayout->addWidget(pauseButton);
+
+        // Add Step button
+        QPushButton *stepButton = new QPushButton("Step", this);
+        connect(stepButton, &QPushButton::clicked, [this]() {
+            // Placeholder for step functionality
+            QMessageBox::information(this, "Step", "Step button clicked. Implement the step logic here.");
+        });
+        controlButtonsLayout->addWidget(stepButton);
+
+        // Add Restart button
+        QPushButton *restartButton = new QPushButton("Reset", this);
+        connect(restartButton, &QPushButton::clicked, [this]() {
+            // Placeholder for restart functionality
+            QMessageBox::information(this, "Restart", "Restart button clicked. Implement the restart logic here.");
+        });
+        controlButtonsLayout->addWidget(restartButton);
+
+    layout->addLayout(controlButtonsLayout);
+
+    
 
     pipelineTable = new QTableWidget(this);
     pipelineTable->setColumnCount(5);

@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cmath>
 #include <iostream>
+#include <cstdint>
 
 // Memory
 constexpr int MEMORY_ADDRESS_BITS = 32;
