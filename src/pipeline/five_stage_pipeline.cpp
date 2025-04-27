@@ -407,5 +407,6 @@ void five_stage_pipeline::run_pipeline() {
             cache.read_data(i);
         }
         cycle++;
+        mainWindow->cycleCount->setText(QString::number(cycle));
     }
 }

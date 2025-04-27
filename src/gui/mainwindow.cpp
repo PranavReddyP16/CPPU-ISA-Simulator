@@ -57,7 +57,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     layout->addWidget(cycleCount);
 
     // Horizontal layout for control buttons
-
     QHBoxLayout *controlButtonsLayout = new QHBoxLayout();
         // Add Run button
         QPushButton *runButton = new QPushButton("Run", this);
@@ -93,7 +92,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     layout->addLayout(controlButtonsLayout);
     
-    // Program
+    // Program box
     QTableWidget *programTable = new QTableWidget(this);
     programTable->setColumnCount(3);
     programTable->setHorizontalHeaderLabels({"Breakpoint", "Instruction", "Pipeline Stage"});
@@ -174,10 +173,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         font.setBold(true);
         addressItem->setFont(font);
         memoryTable->setItem(i, 0, addressItem);
-        for (int j = 1; j < 17; ++j) {
-            QString data = QString("%1").arg(0, 4, 16, QChar('0')).toUpper();
-            memoryTable->setItem(i, j, new QTableWidgetItem(data));
-        }
+        for (int j = 1; j < 17; ++j)
+            memoryTable->setItem(i, j, new QTableWidgetItem(QString("%1").arg(0, 4, 16, QChar('0')).toUpper()));
     }
     memoryTable->resizeColumnsToContents();
     layout->addWidget(memoryTable);
