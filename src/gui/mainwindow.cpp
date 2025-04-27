@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "system_constants.h"
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QVBoxLayout>
@@ -91,14 +92,26 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         controlButtonsLayout->addWidget(restartButton);
 
     layout->addLayout(controlButtonsLayout);
-
     
+    // Program
+    QTableWidget *programTable = new QTableWidget(this);
+    programTable->setColumnCount(3);
+    programTable->setHorizontalHeaderLabels({"Breakpoint", "Instruction", "Pipeline Stage"});
+    layout->addWidget(programTable);
 
-    pipelineTable = new QTableWidget(this);
-    pipelineTable->setColumnCount(5);
-    pipelineTable->setHorizontalHeaderLabels({"fetch", "decode", "execute", "mem_stage", "writeback"});
-    pipelineTable->setRowCount(1);
-    layout->addWidget(pipelineTable);
+    // Load Program button
+    QPushButton *loadProgramButton = new QPushButton("Load Program", this);
+    connect(loadProgramButton, &QPushButton::clicked, [this]() {
+        // Placeholder for load program functionality
+        QMessageBox::information(this, "Load Program", "Load Program button clicked. Implement the load program logic here.");
+    });
+    layout->addWidget(loadProgramButton);
+
+    // pipelineTable = new QTableWidget(this);
+    // pipelineTable->setColumnCount(5);
+    // pipelineTable->setHorizontalHeaderLabels({"fetch", "decode", "execute", "mem_stage", "writeback"});
+    // pipelineTable->setRowCount(1);
+    // layout->addWidget(pipelineTable);
 
     registerTable = new QTableWidget(this);
     registerTable->setColumnCount(2);
@@ -150,25 +163,34 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     registerTable->setItem(21, 1, new QTableWidgetItem("0.0"));
     layout->addWidget(registerTable);
 
+    // Memory Table
     memoryTable = new QTableWidget(this);
-    memoryTable->setColumnCount(2);
-    memoryTable->setHorizontalHeaderLabels({"Address", "Data"});
+    memoryTable->setColumnCount(17);
+    memoryTable->setHorizontalHeaderLabels({"Addr", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"});
+    memoryTable->setRowCount(MEMORY_SIZE/16);
+    for (int i = 0; i < MEMORY_SIZE/16; ++i) {
+        QTableWidgetItem *addressItem = new QTableWidgetItem(QString("%1").arg(i * 16, 4, 16, QChar('0')).toUpper());
+        QFont font = addressItem->font();
+        font.setBold(true);
+        addressItem->setFont(font);
+        memoryTable->setItem(i, 0, addressItem);
+        for (int j = 1; j < 17; ++j) {
+            QString data = QString("%1").arg(0, 4, 16, QChar('0')).toUpper();
+            memoryTable->setItem(i, j, new QTableWidgetItem(data));
+        }
+    }
+    memoryTable->resizeColumnsToContents();
     layout->addWidget(memoryTable);
 
     cacheTable = new QTableWidget(this);
     cacheTable->setColumnCount(3);
     cacheTable->setHorizontalHeaderLabels({"Set", "Tag", "Block Data"});
     layout->addWidget(cacheTable);
-
-    QPushButton *tickButton = new QPushButton("Tick", this);
-    connect(tickButton, &QPushButton::clicked, [this]() {
-        // Placeholder for tick functionality
-        QMessageBox::information(this, "Tick", "Tick button clicked. Implement the tick logic here.");
-    });
-    layout->addWidget(tickButton);
 }
 
-MainWindow::~MainWindow() {}
+MainWindow::~MainWindow() {
+    exit(0);
+}
 
 void MainWindow::setRegisterValue(char* reg, int value) {
     for (int i = 0; i < registerTable->rowCount(); ++i) {

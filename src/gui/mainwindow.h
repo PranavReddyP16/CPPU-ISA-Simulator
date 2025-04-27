@@ -15,7 +15,7 @@ public:
     void setRegisterValue(char* reg, float value);
 
     QLineEdit *cycleCount;
-    QTableWidget *pipelineTable;
+    // QTableWidget *pipelineTable;
     QTableWidget *registerTable;
     QTableWidget *memoryTable;
     QTableWidget *cacheTable;

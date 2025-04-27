@@ -21,11 +21,11 @@ five_stage_pipeline::five_stage_pipeline(Cache& cache, MainWindow* mainWindow): 
 
 void five_stage_pipeline::fetch() {
     sleep(1);
-    mainWindow->pipelineTable->setItem(0, 0, new QTableWidgetItem("X"));
-    mainWindow->pipelineTable->setItem(0, 1, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 2, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 3, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 4, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 0, new QTableWidgetItem("X"));
+    // mainWindow->pipelineTable->setItem(0, 1, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 2, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 3, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 4, new QTableWidgetItem(""));
 
     std::cout<<"=================Fetching Stage======================"<<std::endl;
     std::cout << "Fetching instruction at PC: " << ifr.PC << std::endl;
@@ -58,11 +58,11 @@ void five_stage_pipeline::fetch() {
 
 void five_stage_pipeline::decode() {
     sleep(1);
-    mainWindow->pipelineTable->setItem(0, 0, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 1, new QTableWidgetItem("X"));
-    mainWindow->pipelineTable->setItem(0, 2, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 3, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 4, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 0, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 1, new QTableWidgetItem("X"));
+    // mainWindow->pipelineTable->setItem(0, 2, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 3, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 4, new QTableWidgetItem(""));
 
     std::cout<<"=================Decoding Stage======================"<<std::endl;
     std::cout << "Decoding instruction: " << idr.instruction << std::endl;
@@ -95,11 +95,11 @@ void five_stage_pipeline::decode() {
 
 void five_stage_pipeline::execute() {
     sleep(1);
-    mainWindow->pipelineTable->setItem(0, 0, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 1, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 2, new QTableWidgetItem("X"));
-    mainWindow->pipelineTable->setItem(0, 3, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 4, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 0, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 1, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 2, new QTableWidgetItem("X"));
+    // mainWindow->pipelineTable->setItem(0, 3, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 4, new QTableWidgetItem(""));
 
     std::cout<<"=================Executing Stage======================"<<std::endl;
     std::cout << "===== EX Stage Register (EXR) =====" << std::endl;
@@ -145,11 +145,11 @@ void five_stage_pipeline::execute() {
 
 void five_stage_pipeline::mem_stage() {
     sleep(1);
-    mainWindow->pipelineTable->setItem(0, 0, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 1, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 2, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 3, new QTableWidgetItem("X"));
-    mainWindow->pipelineTable->setItem(0, 4, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 0, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 1, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 2, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 3, new QTableWidgetItem("X"));
+    // mainWindow->pipelineTable->setItem(0, 4, new QTableWidgetItem(""));
 
     std::cout<<"=================Memory Stage======================"<<std::endl;
     std::cout << "===== MEM Stage Register (MEMR) =====" << std::endl;
@@ -186,11 +186,11 @@ void five_stage_pipeline::mem_stage() {
 
 void five_stage_pipeline::writeback() {
     sleep(1);
-    mainWindow->pipelineTable->setItem(0, 0, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 1, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 2, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 3, new QTableWidgetItem(""));
-    mainWindow->pipelineTable->setItem(0, 4, new QTableWidgetItem("X"));
+    // mainWindow->pipelineTable->setItem(0, 0, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 1, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 2, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 3, new QTableWidgetItem(""));
+    // mainWindow->pipelineTable->setItem(0, 4, new QTableWidgetItem("X"));
 
     std::cout<<"=================WriteBack Stage======================"<<std::endl;
     std::cout << "===== Write Back Stage Register (WBR) =====" << std::endl;
