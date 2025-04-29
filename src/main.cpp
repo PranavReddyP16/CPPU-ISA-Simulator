@@ -3,6 +3,7 @@
 #include "memory/Memory.h"
 #include "memory/utils.h"
 #include "memory/Cache.h"
+#include "assembler/assembler.h"
 #include "pipeline/five_stage_pipeline.h"
 
 #include <QApplication>
@@ -69,38 +70,46 @@ int main(int argc, char* argv[]) {
 
     QApplication app(argc, argv);
     MainWindow mainWindow;
+    
+    Memory mem(&mainWindow);
+    Cache cache(mem, ReplacementPolicy::LRU, &mainWindow);
+    Assembler assembler(&mem);
+    mainWindow.assembler = &assembler;
+    five_stage_pipeline pipeline(cache, &mainWindow);
+    mainWindow.pipeline = &pipeline;
+
     mainWindow.show();
 
-    QTimer::singleShot(1, [&mainWindow]() { QtConcurrent::run([&mainWindow]() {
-        cout << "Main program has started" << endl;
-        cout << "Creating memory" << endl;
-        Memory mem(&mainWindow);
+    // QTimer::singleShot(1, [&mainWindow]() { QtConcurrent::run([&mainWindow]() {
+    //     cout << "Main program has started" << endl;
+    //     cout << "Creating memory" << endl;
+    //     Memory mem(&mainWindow);
         
-        cout << "Creating cache" << endl;
-        Cache cache(mem, ReplacementPolicy::LRU,&mainWindow);
+    //     cout << "Creating cache" << endl;
+    //     Cache cache(mem, ReplacementPolicy::LRU,&mainWindow);
         
 
-        int program[] = {
-            4083,    // opcode:0000 rs1:1111 rs2:1111 rd:0011
-            8179,   // opcode:0001 rs1:1111 rs2:1111 rd:0011
-            9011,   // opcode:0010 rs1:0011 rs2:0011 rd:0011
-            255    // HALT (0b11111111)
-        };
+    //     int program[] = {
+    //         4083,    // opcode:0000 rs1:1111 rs2:1111 rd:0011
+    //         8179,   // opcode:0001 rs1:1111 rs2:1111 rd:0011
+    //         9011,   // opcode:0010 rs1:0011 rs2:0011 rd:0011
+    //         255    // HALT (0b11111111)
+    //     };
         
-        for (int i = 0; i < 5; i++)
-            cache.write_data(i+4, int_to_mem_dtype(program[i]));
+    //     for (int i = 0; i < 5; i++)
+    //         mem.write_data(i+4, int_to_mem_dtype(program[i]));
         
-        five_stage_pipeline pipeline(cache, &mainWindow);
-        pipeline.run_pipeline();
+    //     five_stage_pipeline pipeline(cache, &mainWindow);
+    //     pipeline.run_pipeline();
 
 
         
-        for(int i=0;i<16;i++){
-            cache.read_data(i);
-        }
-        cout << "Pipeline execution completed." << endl;
+    //     for(int i=0;i<16;i++){
+    //         cache.read_data(i);
+    //     }
+    //     cout << "Pipeline execution completed." << endl;
        
-    }); });
+    // }); });
  
     return app.exec();
 }

@@ -2,16 +2,23 @@
 #include <sstream>
 #include <cstdint>
 #include <vector>
+#include <fstream>
+#include <memory/Memory.h>
+#include <gui/mainwindow.h>
+#include <qmessagebox.h>
 
-uint64_t assembleInstrxn(const std::string& instrxnLine) {
+Assembler::Assembler(Memory *mem) : mem(mem) { }
+Assembler::~Assembler() { }
+
+uint64_t Assembler::assembleInstrxn(const std::string& instrxnLine) {
     std::istringstream iss(instrxnLine);
     std::string instrxn;
     iss >> instrxn;
 
     auto it = opcodeMap.find(instrxn);
-    if (it == opcodeMap.end()) {
-        throw std::invalid_argument("Unknown instruction: " + instrxn);
-    }
+    if (it == opcodeMap.end())
+        QMessageBox::critical(mainWindow, "Error", "Unknown instruction: " + QString::fromStdString(instrxn));
+        // throw std::invalid_argument("Unknown instruction: " + instrxn);
 
     uint64_t opcode = static_cast<uint64_t>(it->second);
     uint64_t encoded = opcode << 58; // 6 bits shifted to the top
@@ -72,17 +79,41 @@ uint64_t assembleInstrxn(const std::string& instrxnLine) {
         encoded |= (r2 << 52);
     } else if (instrxn == "RET") {
         // Nothing more needed; all operands are unused
-    } else {
-        throw std::invalid_argument("Unhandled instruction type: " + instrxn);
-    }
+    } else
+        QMessageBox::critical(mainWindow, "Error", "Unhandled instruction type: " + QString::fromStdString(instrxn));
+        // throw std::invalid_argument("Unhandled instruction type: " + instrxn);
 
     return encoded;
 }
 
-std::vector<int> assembleProgram(const std::vector<std::string>& program) {
-    std::vector<int> assembledProgram;
-    for (const auto& instrxn : program)
+std::vector<std::uint64_t> Assembler::assembleProgram(std::vector<std::string> &programLines) {
+    std::vector<uint64_t> assembledProgram;
+    for (const auto& instrxn : programLines)
         assembledProgram.push_back(assembleInstrxn(instrxn));
     
     return assembledProgram;
+}
+
+void Assembler::writeProgramToMemory(std::vector<std::uint64_t> &program) {
+    for (int i = 0; i < program.size(); i++)
+        mem->write_data(i, program[i]);
+}
+
+void Assembler::loadProgram(const std::string &filename) {
+    std::ifstream file(filename);
+    // if (!file.is_open())
+    //     QMessageBox::critical(mainWindow, "Error", "Could not open file: " + QString::fromStdString(filename));
+
+    std::vector<std::string> programLines;
+    std::string line;
+    while (std::getline(file, line)) {
+        if (!line.empty() && line[0] != '#') // Ignore empty lines and comments
+            programLines.push_back(line);
+    }
+    file.close();
+
+    std::vector<uint64_t> assembledProgram = assembleProgram(programLines);
+    writeProgramToMemory(assembledProgram);
+
+    std::cout << mem->read_data(0) << std::endl;
 }

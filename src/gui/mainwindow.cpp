@@ -7,6 +7,11 @@
 #include <QCheckBox>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QHBoxLayout>
+#include <QFileDialog>
+#include <assembler/assembler.h>
+#include <pipeline/five_stage_pipeline.h>
+
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     // Set up the main window
@@ -63,16 +68,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         connect(runButton, &QPushButton::clicked, [this]() {
             // Placeholder for run functionality
             QMessageBox::information(this, "Run", "Run button clicked. Implement the run logic here.");
+            // pipeline->halted = false;
         });
         controlButtonsLayout->addWidget(runButton);
 
-        // Add Pause button
-        QPushButton *pauseButton = new QPushButton("Pause", this);
-        connect(pauseButton, &QPushButton::clicked, [this]() {
-            // Placeholder for pause functionality
-            QMessageBox::information(this, "Pause", "Pause button clicked. Implement the pause logic here.");
+        // Add Halt button
+        QPushButton *haltButton = new QPushButton("Halt", this);
+        connect(haltButton, &QPushButton::clicked, [this]() {
+            pipeline->halted = true;
         });
-        controlButtonsLayout->addWidget(pauseButton);
+        controlButtonsLayout->addWidget(haltButton);
 
         // Add Step button
         QPushButton *stepButton = new QPushButton("Step", this);
@@ -96,13 +101,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QTableWidget *programTable = new QTableWidget(this);
     programTable->setColumnCount(3);
     programTable->setHorizontalHeaderLabels({"Breakpoint", "Instruction", "Pipeline Stage"});
+    programTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     layout->addWidget(programTable);
 
     // Load Program button
     QPushButton *loadProgramButton = new QPushButton("Load Program", this);
     connect(loadProgramButton, &QPushButton::clicked, [this]() {
-        // Placeholder for load program functionality
-        QMessageBox::information(this, "Load Program", "Load Program button clicked. Implement the load program logic here.");
+        QString filename = QFileDialog::getOpenFileName(this, "Load Program", "", "All Files (*)");
+        assembler->loadProgram(filename.toStdString());
     });
     layout->addWidget(loadProgramButton);
 
@@ -110,6 +116,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     // pipelineTable->setColumnCount(5);
     // pipelineTable->setHorizontalHeaderLabels({"fetch", "decode", "execute", "mem_stage", "writeback"});
     // pipelineTable->setRowCount(1);
+    // pipelineTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     // layout->addWidget(pipelineTable);
 
     registerTable = new QTableWidget(this);
@@ -160,6 +167,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     registerTable->setItem(20, 1, new QTableWidgetItem("0.0"));
     registerTable->setItem(21, 0, new QTableWidgetItem("FPR[7]"));
     registerTable->setItem(21, 1, new QTableWidgetItem("0.0"));
+    registerTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     layout->addWidget(registerTable);
 
     // Memory Table
@@ -174,14 +182,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         addressItem->setFont(font);
         memoryTable->setItem(i, 0, addressItem);
         for (int j = 1; j < 17; ++j)
-            memoryTable->setItem(i, j, new QTableWidgetItem(QString("%1").arg(0, 4, 16, QChar('0')).toUpper()));
+            memoryTable->setItem(i, j, new QTableWidgetItem(QString("%1").arg(0, 16, 16, QChar('0')).toUpper()));
     }
     memoryTable->resizeColumnsToContents();
+    memoryTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     layout->addWidget(memoryTable);
 
     cacheTable = new QTableWidget(this);
     cacheTable->setColumnCount(3);
     cacheTable->setHorizontalHeaderLabels({"Set", "Tag", "Block Data"});
+    cacheTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     layout->addWidget(cacheTable);
 }
 

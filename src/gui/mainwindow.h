@@ -3,6 +3,8 @@
 #include <QMainWindow>
 #include <QLineEdit>
 #include <QTableWidget>
+class five_stage_pipeline;
+class Assembler;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -19,4 +21,7 @@ public:
     QTableWidget *registerTable;
     QTableWidget *memoryTable;
     QTableWidget *cacheTable;
+
+    Assembler *assembler;
+    five_stage_pipeline *pipeline;
 };

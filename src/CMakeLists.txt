@@ -11,6 +11,7 @@ set(SOURCES
     pipeline/five_stage_pipeline.cpp
     pipeline/instruction_helpers.cpp
     alu/ALU.cpp
+    assembler/assembler.cpp
 )
 
 # Create a library for ISA core functionality

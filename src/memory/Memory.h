@@ -15,7 +15,5 @@ public:
     
 private:
     MemoryDataType data[MEMORY_SIZE];
-
     MainWindow* mainWindow;
-    void update_gui();
 };
