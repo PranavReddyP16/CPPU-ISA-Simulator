@@ -1,26 +1,15 @@
 #pragma once
-
 #include "system_constants.h"
-#include <algorithm>  // for std::fill
 
 class Memory {
 public:
-    Memory() {
-        // initialize to zero
-        std::fill(std::begin(data), std::end(data), 0);
-    }
+    Memory();
+    void reset();
 
-    MemoryDataType read_data(int address) const {
-        return data[address];
-    }
+    MemoryDataType read_data(int address) const;
+    void write_data(int address, MemoryDataType data);
 
-    void write_data(int address, MemoryDataType value) {
-        data[address] = value;
-    }
-
-    MemoryDataType& operator[](int address) {
-        return data[address];
-    }
+    MemoryDataType& operator[](int address);
 
 private:
     MemoryDataType data[MEMORY_SIZE];

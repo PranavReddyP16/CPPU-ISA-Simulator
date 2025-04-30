@@ -1,119 +1,112 @@
 #include "assembler.h"
-#include "memory/Memory.h"
 #include <sstream>
 #include <fstream>
-#include <iostream>
+#include <stdexcept>
+#include "memory/Memory.h"
 
-Assembler::Assembler(Memory *mem) : mem(mem) {}
+/* helper: read next integer, tolerate a trailing “,” */
+static uint64_t next_int(std::istringstream &iss)
+{
+    std::string tok;
+    if (!(iss >> tok)) throw std::runtime_error("Assembler: missing / bad operand");
+
+    if (tok.back()==',') tok.pop_back();      // drop comma
+    return std::stoull(tok, nullptr, 0);      // auto 0x / decimal detect
+}
+
+Assembler::Assembler(Memory *m): mem(m) {}
 Assembler::~Assembler() = default;
 
-uint64_t Assembler::assembleInstrxn(const std::string& instrxnLine) {
-    std::istringstream iss(instrxnLine);
-    std::string instrxn;
-    iss >> instrxn;
+/* ─── assemble one line ─────────────────────────────────────────── */
+uint64_t Assembler::assembleInstrxn(const std::string &line)
+{
+    std::istringstream iss(line);
+    std::string op;  iss >> op;
 
-    auto it = opcodeMap.find(instrxn);
-    if (it == opcodeMap.end()) {
-        std::cerr << "Unknown instruction: " << instrxn << std::endl;
-        return 0;
+    auto it = opcodeMap.find(op);
+    if (it==opcodeMap.end()) throw std::runtime_error("Unknown instruction: "+op);
+
+    uint64_t enc = uint64_t(it->second) << 58;   // opcode
+
+    if (op=="LI") {                        //  LI rd, imm
+        uint64_t rd  = next_int(iss);
+        uint64_t imm = next_int(iss);
+        enc |= (rd &7) << 55;
+        enc |=  imm   & 0x007FFFFFFFFFFFFFULL;
+    }
+    else if (op=="ILOAD"||op=="FLOAD"||op=="SLOAD") {
+        uint64_t rd   = next_int(iss);
+        uint64_t addr = next_int(iss);
+        uint64_t len  = next_int(iss);
+        enc |= (rd &7) << 55;
+        enc |= (addr &0xFFFFFFFFULL) << 23;
+        enc |=  len &0xFF;
+    }
+    else if (op=="ISTORE"||op=="FSTORE"||op=="SSTORE") {
+        uint64_t rs1  = next_int(iss);
+        uint64_t addr = next_int(iss);
+        uint64_t len  = next_int(iss);
+        enc |= (rs1 &7) << 55;
+        enc |= (addr &0xFFFFFFFFULL) << 23;
+        enc |=  len &0xFF;
+    }
+    else if (op=="CMP"||op=="ADD"||op=="FADD"||
+             op=="SUB"||op=="FSUB"||op=="MOD"||
+             op=="AND"||op=="OR") {
+        uint64_t rd  = next_int(iss);
+        uint64_t rs2 = next_int(iss);
+        enc |= (rd  &7)<<55;              // rd = rs1
+        enc |= (rs2 &7)<<52;
+    }
+    else if (op=="MUL"||op=="FMUL"||op=="DIV"||op=="FDIV") {
+        uint64_t rd  = next_int(iss);
+        uint64_t rs1 = next_int(iss);
+        uint64_t rs2 = next_int(iss);
+        enc |= (rd  &7)<<55;
+        enc |= (rs1 &7)<<52;
+        enc |= (rs2 &7)<<49;
+    }
+    else if (op=="LSHIFT"||op=="RSHIFT"||op=="SETBIT"||op=="CLRIT") {
+        uint64_t r1     = next_int(iss);
+        uint64_t amount = next_int(iss);
+        uint64_t flag   = (op=="LSHIFT"||op=="RSHIFT") ? next_int(iss) : 0;
+        enc |= (r1 &7)<<55;
+        enc |= (amount &0xFF)<<47;
+        enc |= (flag &1)<<46;
+    }
+    else if (op=="GETBIT") {
+        uint64_t r1  = next_int(iss);
+        uint64_t bit = next_int(iss);
+        uint64_t r2  = next_int(iss);
+        enc |= (r1 &7)<<55;
+        enc |= (bit &0xFF)<<47;
+        enc |= (r2 &7)<<44;
+    }
+    else if (op=="POPCNT"||op=="NOT") {
+        uint64_t r1 = next_int(iss);
+        uint64_t r2 = (op=="POPCNT") ? next_int(iss) : 0;
+        enc |= (r1 &7)<<55;
+        enc |= (r2 &7)<<52;
     }
 
-    uint64_t opcode = static_cast<uint64_t>(it->second);
-    uint64_t encoded = opcode << 58; // 6 bits shifted to top
-
-    if (instrxn == "IN" || instrxn == "OUT") {
-        uint64_t addr, len;
-        iss >> addr >> len;
-        encoded |= (addr << 26);
-        encoded |= (len & 0x3FFFFF);
-    }
-    else if (instrxn == "ILOAD" || instrxn == "FLOAD" || instrxn == "SLOAD" ||
-             instrxn == "ISTORE"|| instrxn == "FSTORE"|| instrxn == "SSTORE") {
-        uint64_t reg, addr, len;
-        iss >> reg >> addr >> len;
-        encoded |= (reg << 55);
-        encoded |= (addr << 23);
-        encoded |= (len & 0xFF);
-    }
-    else if (instrxn == "CALL"|| instrxn == "JMP"|| instrxn == "JE" ||
-             instrxn == "JNE" ||instrxn == "JG"|| instrxn == "JL"||
-             instrxn == "JZ") {
-        uint64_t target;
-        iss >> target;
-        encoded |= (target << 26);
-    }
-    else if (instrxn == "CMP"|| instrxn == "ADD"|| instrxn == "FADD"||
-             instrxn == "SUB"|| instrxn == "FSUB"|| instrxn == "MOD"||
-             instrxn == "AND"|| instrxn == "OR") {
-        uint64_t r1, r2;
-        iss >> r1 >> r2;
-        encoded |= (r1 << 55);
-        encoded |= (r2 << 52);
-    }
-    else if (instrxn == "MUL"|| instrxn == "FMUL"|| instrxn == "DIV"|| instrxn == "FDIV") {
-        uint64_t r1, r2, r3;
-        iss >> r1 >> r2 >> r3;
-        encoded |= (r1 << 55);
-        encoded |= (r2 << 52);
-        encoded |= (r3 << 49);
-    }
-    else if (instrxn == "LSHIFT"|| instrxn == "RSHIFT"||
-             instrxn == "SETBIT"|| instrxn == "CLRIT") {
-        uint64_t r1, amount, flag = 0;
-        iss >> r1 >> amount;
-        if (instrxn == "LSHIFT" || instrxn == "RSHIFT")
-            iss >> flag;
-        encoded |= (r1 << 55);
-        encoded |= (amount << 47);
-        encoded |= (flag << 46);
-    }
-    else if (instrxn == "GETBIT") {
-        uint64_t r1, bit, r2;
-        iss >> r1 >> bit >> r2;
-        encoded |= (r1 << 55);
-        encoded |= (bit << 47);
-        encoded |= (r2 << 44);
-    }
-    else if (instrxn == "POPCNT" || instrxn == "NOT") {
-        uint64_t r1, r2 = 0;
-        iss >> r1;
-        if (instrxn == "POPCNT") iss >> r2;
-        encoded |= (r1 << 55);
-        encoded |= (r2 << 52);
-    }
-    // RET and other single‐opcode cases fall through with just the opcode
-
-    return encoded;
+    return enc;
 }
 
-std::vector<uint64_t> Assembler::assembleProgram(const std::vector<std::string> &programLines) {
-    std::vector<uint64_t> assembled;
-    assembled.reserve(programLines.size());
-    for (auto &ln : programLines)
-        assembled.push_back(assembleInstrxn(ln));
-    return assembled;
-}
+/* ─── load full file ────────────────────────────────────────────── */
+void Assembler::loadProgram(const std::string &file)
+{
+    std::ifstream f(file);
+    if (!f) throw std::runtime_error("Cannot open "+file);
 
-void Assembler::writeProgramToMemory(const std::vector<uint64_t> &program) {
-    for (size_t i = 0; i < program.size(); ++i)
-        mem->write_data(static_cast<int>(i), program[i]);
-}
-
-void Assembler::loadProgram(const std::string &filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Cannot open file: " << filename << std::endl;
-        return;
+    assembledProgram.clear();
+    std::string ln;
+    while (std::getline(f,ln))
+    {
+        if (ln.empty()||ln[0]==';'||ln[0]=='#') continue;
+        assembledProgram.push_back(assembleInstrxn(ln));
     }
+    f.close();
 
-    std::vector<std::string> lines;
-    std::string line;
-    while (std::getline(file, line)) {
-        if (!line.empty() && line[0] != '#')
-            lines.push_back(line);
-    }
-
-    auto prog = assembleProgram(lines);
-    writeProgramToMemory(prog);
-    std::cout << "Assembly complete: wrote " << prog.size() << " instructions.\n";
+    for (size_t i=0;i<assembledProgram.size();++i)
+        mem->write_data(i, assembledProgram[i]);
 }

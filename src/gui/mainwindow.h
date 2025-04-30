@@ -1,12 +1,12 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QTableWidget>
 #include <QCheckBox>
 #include <QPushButton>
 #include <QLineEdit>
-#include <QTableWidget>
+#include <QTabWidget>
 #include <QTimer>
-#include <QStringList>
 
 #include "memory/Memory.h"
 #include "memory/Cache.h"
@@ -26,34 +26,33 @@ private slots:
     void refreshGui();
 
 private:
-    // Mode controls
-    QCheckBox    *chkCache;
-    QCheckBox    *chkPipeline;
+    QTabWidget           *tabWidget;
+    QWidget              *overviewTab;
+    QWidget              *pipelineTab;
 
-    // Control buttons
-    QPushButton  *btnRun;
-    QPushButton  *btnHalt;
-    QPushButton  *btnStep;
-    QPushButton  *btnReset;
+    QCheckBox            *chkCache;
+    QCheckBox            *chkPipeline;
 
-    // Cycle counter display
-    QLineEdit    *cycleCount;
+    QPushButton          *btnRun;
+    QPushButton          *btnHalt;
+    QPushButton          *btnStep;
+    QPushButton          *btnReset;
+    QPushButton          *btnLoadProgram;
 
-    // State views
-    QTableWidget *registerTable;
-    QTableWidget *memoryTable;
-    QTableWidget *cacheTable;
+    QLineEdit            *cycleCount;
 
-    // Back-end objects
+    QTableWidget         *programTable;
+    QTableWidget         *pipelineTable;
+    QTableWidget         *registerTable;
+    QTableWidget         *memoryTable;
+    QTableWidget         *cacheTable;
+
     Memory               *memory;
     Cache                *cache;
     Assembler            *assembler;
     five_stage_pipeline  *pipeline;
 
-    // Timer for continuous run
     QTimer               *runTimer;
-
-    // Internal counters
     int                   cycles = 0;
-    int                   memRows;
+    int                   memRows = 0;
 };

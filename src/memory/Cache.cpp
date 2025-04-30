@@ -1,128 +1,118 @@
-#include <iostream>
 #include "Cache.h"
-#include "system_constants.h"
-#include "Memory.h"
 #include "utils.h"
+#include <iostream>
 
-static int clock_cycle = 0;
-
-// Constructor: zero out all cache lines
-Cache::Cache(Memory& main_memory, ReplacementPolicy rp)
-  : main_memory(main_memory),
-    replacement_policy(rp)
+Cache::Cache(Memory &main_memory, ReplacementPolicy rp)
+  : main_memory(main_memory), replacement_policy(rp)
 {
-    for (auto &cache_set : cache_sets)
-        for (auto &cache_line : cache_set)
-            for (auto &d : cache_line.data)
-                d = int_to_mem_dtype(0);
+    reset();
 }
 
-// Extract offset = low bits
-int Cache::extract_offset(int address) {
+void Cache::reset() {
+    // Invalidate all lines and zero them out
+    for (int s = 0; s < CACHE_NUM_SETS; ++s) {
+        for (int w = 0; w < CACHE_ASSOCIATIVITY; ++w) {
+            auto &line = cache_sets[s][w];
+            line.valid     = false;
+            line.dirty     = false;
+            line.last_used = 0;
+            line.tag       = 0;
+            for (int b = 0; b < CACHE_LINE_SIZE; ++b)
+                line.data[b] = 0;
+        }
+    }
+}
+
+int Cache::extract_offset(int address) const {
     return address & ((1 << CACHE_LINE_OFFSET_BITS) - 1);
 }
 
-// Extract index = middle bits
-int Cache::extract_index(int address) {
-    return (address >> CACHE_LINE_OFFSET_BITS)
-           & ((1 << CACHE_LINE_INDEX_BITS) - 1);
+int Cache::extract_index(int address) const {
+    return (address >> CACHE_LINE_OFFSET_BITS) & ((1 << CACHE_LINE_INDEX_BITS) - 1);
 }
 
-// Extract tag = high bits
-int Cache::extract_tag(int address) {
-    return address >> (CACHE_LINE_INDEX_BITS + CACHE_LINE_OFFSET_BITS);
+int Cache::extract_tag(int address) const {
+    return address >> (CACHE_LINE_OFFSET_BITS + CACHE_LINE_INDEX_BITS);
 }
 
-// Console‐only display of cache contents
-void Cache::show_cache() {
-    for (int set_index = 0; set_index < CACHE_NUM_SETS; ++set_index) {
-        std::cout << "Set " << set_index << ":\n";
-        for (const auto &line : cache_sets[set_index]) {
-            std::cout << "  Tag=" << line.tag << " Data=[";
-            for (auto datum : line.data) {
-                print_data(datum);
-                std::cout << " ";
-            }
-            std::cout << "]\n";
-        }
-        std::cout << "\n";
-    }
-}
-
-// Find eviction candidate in a set (LRU / first‐invalid)
-int Cache::find_cache_line_to_evict_from_set(CacheSet& cache_set) {
-    int best_i = 0, best_time = INT_MAX;
+int Cache::find_cache_line_to_evict_from_set(int set_index) const {
+    // LRU: pick the line with smallest last_used, or an invalid one
+    int best = 0;
+    int best_time = INT_MAX;
     for (int i = 0; i < CACHE_ASSOCIATIVITY; ++i) {
-        auto &ln = cache_set[i];        // now allowed on non‐const
-        if (!ln.valid) return i;
-        if (ln.last_used < best_time) {
-            best_time = ln.last_used;
-            best_i = i;
+        const auto &L = cache_sets[set_index][i];
+        if (!L.valid) {
+            return i;
+        }
+        if (L.last_used < best_time) {
+            best_time = L.last_used;
+            best = i;
         }
     }
-    return best_i;
+    return best;
 }
 
-// Evict & refill one cache line
-void Cache::evict_and_replace_cache_line(CacheSet& cache_set,
-                                         int      set_idx,
-                                         int      mem_base_addr)
-{
-    int idx = find_cache_line_to_evict_from_set(cache_set);
-    auto &line = cache_set[idx];
+void Cache::evict_and_replace_cache_line(int set_index, int start_addr) {
+    int way = find_cache_line_to_evict_from_set(set_index);
+    auto &L = cache_sets[set_index][way];
 
-    // Write-back if dirty
-    if (line.dirty) {
-        int wb_addr = (line.tag << (CACHE_LINE_INDEX_BITS + CACHE_LINE_OFFSET_BITS))
-                      | (set_idx << CACHE_LINE_OFFSET_BITS);
-        for (int i = 0; i < CACHE_LINE_SIZE; ++i)
-            main_memory.write_data(wb_addr + i, line.data[i]);
+    // Write back if dirty
+    if (L.dirty) {
+        int base = (L.tag << (CACHE_LINE_INDEX_BITS + CACHE_LINE_OFFSET_BITS))
+                 | (set_index << CACHE_LINE_OFFSET_BITS);
+        for (int b = 0; b < CACHE_LINE_SIZE; ++b) {
+            main_memory.write_data(base + b, L.data[b]);
+        }
     }
 
-    // Refill from memory
-    for (int i = 0; i < CACHE_LINE_SIZE; ++i)
-        line.data[i] = main_memory.read_data(mem_base_addr + i);
+    // Refill
+    L.tag       = extract_tag(start_addr);
+    L.valid     = true;
+    L.dirty     = false;
+    static int global_clock = 0;
+    L.last_used = global_clock++;
 
-    line.tag       = extract_tag(mem_base_addr);
-    line.valid     = true;
-    line.dirty     = false;
-    line.last_used = clock_cycle++;
+    for (int b = 0; b < CACHE_LINE_SIZE; ++b) {
+        L.data[b] = main_memory.read_data(start_addr + b);
+    }
 }
 
-// Read-through: on miss evict+refill, then return value
 MemoryDataType Cache::read_data(int address) {
-    int set_idx = extract_index(address);
-    int tag     = extract_tag(address);
-    int offset  = extract_offset(address);
+    int set_index = extract_index(address);
+    int tag       = extract_tag(address);
+    int offset    = extract_offset(address);
 
-    auto &set = cache_sets[set_idx];
-    for (auto &ln : set) {
-        if (ln.valid && ln.tag == tag) {
-            ln.last_used = clock_cycle++;
-            return ln.data[offset];
+    // Hit?
+    for (auto &L : cache_sets[set_index]) {
+        if (L.valid && L.tag == tag) {
+            static int global_clock = 0;
+            L.last_used = global_clock++;
+            return L.data[offset];
         }
     }
-    // Miss
+    // Miss:
     int base = address - offset;
-    evict_and_replace_cache_line(set, set_idx, base);
-    return read_data(address);
+    evict_and_replace_cache_line(set_index, base);
+    return read_data(address);  // now it's a hit
 }
 
-// Write-through: no-allocate on miss
-void Cache::write_data(int address, MemoryDataType data) {
-    int set_idx = extract_index(address);
-    int tag     = extract_tag(address);
-    int offset  = extract_offset(address);
+void Cache::write_data(int address, MemoryDataType value) {
+    int set_index = extract_index(address);
+    int tag       = extract_tag(address);
+    int offset    = extract_offset(address);
 
-    auto &set = cache_sets[set_idx];
-    for (auto &ln : set) {
-        if (ln.valid && ln.tag == tag) {
-            ln.data[offset] = data;
-            ln.dirty        = true;
-            ln.last_used    = clock_cycle++;
+    // Hit?
+    for (auto &L : cache_sets[set_index]) {
+        if (L.valid && L.tag == tag) {
+            static int global_clock = 0;
+            L.last_used = global_clock++;
+            L.data[offset] = value;
+            L.dirty = true;
             return;
         }
     }
-    // Miss: write directly to memory
-    main_memory.write_data(address, data);
+    // Miss: bring in then write
+    int base = address - offset;
+    evict_and_replace_cache_line(set_index, base);
+    write_data(address, value);
 }
