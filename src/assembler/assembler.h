@@ -6,15 +6,17 @@
 #include <vector>
 
 class Memory;
-class MainWindow;
 
 class Assembler {
 public:
-    Assembler(Memory *mem);
+    explicit Assembler(Memory *mem);
     ~Assembler();
+
+    // Load an assembly file, assemble it, and write it into memory
     void loadProgram(const std::string& filename);
 
 private:
+    // Map mnemonics to 6‐bit opcodes
     std::unordered_map<std::string, int> opcodeMap = {
         {"IN",     0b000000},
         {"OUT",    0b000001},
@@ -52,11 +54,15 @@ private:
         {"OR",     0b100001},
         {"NOT",    0b100010}
     };
-    
-    Memory *mem;
-    MainWindow *mainWindow;
 
+    Memory *mem;
+
+    // Assemble one instruction line into a 64-bit word
     uint64_t assembleInstrxn(const std::string& instrxnLine);
-    std::vector<std::uint64_t> assembleProgram(std::vector<std::string> &programLines);
-    void writeProgramToMemory(std::vector<std::uint64_t> &program);
+
+    // Assemble a list of lines into words
+    std::vector<uint64_t> assembleProgram(const std::vector<std::string> &programLines);
+
+    // Write the assembled words into memory at successive addresses
+    void writeProgramToMemory(const std::vector<uint64_t> &program);
 };

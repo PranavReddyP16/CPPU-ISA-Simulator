@@ -4,192 +4,125 @@
 #include "Memory.h"
 #include "utils.h"
 
-int clock_cycle = 0;
+static int clock_cycle = 0;
 
-Cache::Cache(Memory& main_memory, ReplacementPolicy rp, MainWindow* mainWindow) 
-: main_memory(main_memory), replacement_policy(rp), mainWindow(mainWindow) {
-    // Setting everything equal to 0 for printing purposes
-    for (CacheSet& cache_set : this->cache_sets) {
-        for (CacheLine& cache_line : cache_set) {
-            for (MemoryDataType &data : cache_line.data) {
-                data = int_to_mem_dtype(0);
-            }
-        }
-    }
-
-    update_gui();
+// Constructor: zero out all cache lines
+Cache::Cache(Memory& main_memory, ReplacementPolicy rp)
+  : main_memory(main_memory),
+    replacement_policy(rp)
+{
+    for (auto &cache_set : cache_sets)
+        for (auto &cache_line : cache_set)
+            for (auto &d : cache_line.data)
+                d = int_to_mem_dtype(0);
 }
 
+// Extract offset = low bits
 int Cache::extract_offset(int address) {
-    // Last bits of an address
     return address & ((1 << CACHE_LINE_OFFSET_BITS) - 1);
 }
 
+// Extract index = middle bits
 int Cache::extract_index(int address) {
-    // Middle bits that weren't used for offset
-    return (address >> CACHE_LINE_OFFSET_BITS) & ((1<<CACHE_LINE_INDEX_BITS) - 1);
+    return (address >> CACHE_LINE_OFFSET_BITS)
+           & ((1 << CACHE_LINE_INDEX_BITS) - 1);
 }
 
+// Extract tag = high bits
 int Cache::extract_tag(int address) {
-    // First bits not used in index or offset
     return address >> (CACHE_LINE_INDEX_BITS + CACHE_LINE_OFFSET_BITS);
 }
 
+// Console‐only display of cache contents
 void Cache::show_cache() {
-    for (int set_index = 0; set_index < CACHE_NUM_SETS; set_index++) {
-        std::cout << "Set number " << set_index << ":" << std::endl;
-
-        for (CacheLine cur_cache_line : this->cache_sets[set_index]) {
-            std::cout << "    Tag: "<<cur_cache_line.tag << ", Data: ";
-            for (MemoryDataType datum : cur_cache_line.data) {
+    for (int set_index = 0; set_index < CACHE_NUM_SETS; ++set_index) {
+        std::cout << "Set " << set_index << ":\n";
+        for (const auto &line : cache_sets[set_index]) {
+            std::cout << "  Tag=" << line.tag << " Data=[";
+            for (auto datum : line.data) {
                 print_data(datum);
+                std::cout << " ";
             }
-            std::cout<<std::endl;
+            std::cout << "]\n";
         }
-        std::cout<<std::endl;
+        std::cout << "\n";
     }
 }
 
-int Cache::find_cache_line_to_evict_from_set(CacheSet cache_set) {
-    // TODO uncomment this when we implement FIFO replacement policy
-    // if (this->replacement_policy == ReplacementPolicy::LRU) {
-        int least_recently_used_time = 1e9+7;
-        int least_recently_used_index = 0;
-        for (int cache_line_index = 0; cache_line_index < CACHE_ASSOCIATIVITY; cache_line_index++) {
-            // Always prefer removing an invalid cache line first before checking LRU
-            if (cache_set[cache_line_index].valid == false) {
-                least_recently_used_index = cache_line_index;
-                break;
-            }
-
-            if(cache_set[cache_line_index].last_used < least_recently_used_time) {
-                least_recently_used_time = cache_set[cache_line_index].last_used;
-                least_recently_used_index = cache_line_index;
-            }
-        }
-
-        return least_recently_used_index;
-    // }
-}
-
-void Cache::evict_and_replace_cache_line(CacheSet& cache_set, int cache_set_index, int starting_memory_address) {
-    int eviction_index = find_cache_line_to_evict_from_set(cache_set);
-    std::cout<<"Cache line number "<<eviction_index<<" being evicted"<<std::endl;
-    std::cout<<"Starting address of new line is: "<<starting_memory_address<<std::endl;
-
-    CacheLine& eviction_line = cache_set[eviction_index];
-
-    // Write back if dirty bit is set
-    if (eviction_line.dirty) {
-        int starting_wb_address = (eviction_line.tag << (CACHE_LINE_INDEX_BITS + CACHE_LINE_OFFSET_BITS))\
-            | (cache_set_index << CACHE_LINE_OFFSET_BITS);
-        
-        // Writing back
-        for (int i = 0; i < CACHE_LINE_SIZE; i++) {
-            this->main_memory.write_data(starting_wb_address + i, eviction_line[i]);
+// Find eviction candidate in a set (LRU / first‐invalid)
+int Cache::find_cache_line_to_evict_from_set(CacheSet& cache_set) {
+    int best_i = 0, best_time = INT_MAX;
+    for (int i = 0; i < CACHE_ASSOCIATIVITY; ++i) {
+        auto &ln = cache_set[i];        // now allowed on non‐const
+        if (!ln.valid) return i;
+        if (ln.last_used < best_time) {
+            best_time = ln.last_used;
+            best_i = i;
         }
     }
-
-    // Evict and repopulate
-    std::cout<<"Printing new line after evicting"<<std::endl;
-    for (int i = 0; i < CACHE_LINE_SIZE; i++) {
-        eviction_line[i] = this->main_memory.read_data(starting_memory_address + i);
-        std::cout<<mem_dtype_to_int(eviction_line[i])<<" ";
-    }
-    std::cout<<std::endl;
-    std::cout<<std::endl;
-    eviction_line.tag = extract_tag(starting_memory_address);
-    eviction_line.dirty = false;
-    eviction_line.valid = true;
-    eviction_line.last_used = clock_cycle;
-    clock_cycle++;
+    return best_i;
 }
 
+// Evict & refill one cache line
+void Cache::evict_and_replace_cache_line(CacheSet& cache_set,
+                                         int      set_idx,
+                                         int      mem_base_addr)
+{
+    int idx = find_cache_line_to_evict_from_set(cache_set);
+    auto &line = cache_set[idx];
+
+    // Write-back if dirty
+    if (line.dirty) {
+        int wb_addr = (line.tag << (CACHE_LINE_INDEX_BITS + CACHE_LINE_OFFSET_BITS))
+                      | (set_idx << CACHE_LINE_OFFSET_BITS);
+        for (int i = 0; i < CACHE_LINE_SIZE; ++i)
+            main_memory.write_data(wb_addr + i, line.data[i]);
+    }
+
+    // Refill from memory
+    for (int i = 0; i < CACHE_LINE_SIZE; ++i)
+        line.data[i] = main_memory.read_data(mem_base_addr + i);
+
+    line.tag       = extract_tag(mem_base_addr);
+    line.valid     = true;
+    line.dirty     = false;
+    line.last_used = clock_cycle++;
+}
+
+// Read-through: on miss evict+refill, then return value
 MemoryDataType Cache::read_data(int address) {
-    // TODO Redundant code in read/write functions
-    int address_set_index = extract_index(address);
-    int address_tag = extract_tag(address);
-    int address_offset = extract_offset(address);
+    int set_idx = extract_index(address);
+    int tag     = extract_tag(address);
+    int offset  = extract_offset(address);
 
-    // Searching the set for a matching tag
-    for (CacheLine &cur_cache_line : this->cache_sets[address_set_index]) {
-        // Cache hit
-        if (cur_cache_line.valid && address_tag == cur_cache_line.tag) {
-            std::cout<<"Cache hit for address: "<<address<<std::endl;
-            std::cout << "Value at address " << address << " in cache: "<< mem_dtype_to_int(cur_cache_line[address_offset]) << std::endl;
-            cur_cache_line.last_used = clock_cycle;
-            clock_cycle++;
-            return cur_cache_line[address_offset];
+    auto &set = cache_sets[set_idx];
+    for (auto &ln : set) {
+        if (ln.valid && ln.tag == tag) {
+            ln.last_used = clock_cycle++;
+            return ln.data[offset];
         }
     }
-
-    // Cache miss
-    std::cout<<"Cache miss for address: "<<address<<std::endl;
-    int starting_memory_address = address - address_offset;
-
-    evict_and_replace_cache_line(this->cache_sets[address_set_index], address_set_index, starting_memory_address);
-
-    // Calling the function again should now return the newly populated cache value
+    // Miss
+    int base = address - offset;
+    evict_and_replace_cache_line(set, set_idx, base);
     return read_data(address);
 }
 
+// Write-through: no-allocate on miss
 void Cache::write_data(int address, MemoryDataType data) {
-     // TODO Redundant code in read/write functions
-    std::cout<<"Address: "<<address<<" "<<"Data: "<<mem_dtype_to_int(data)<<std::endl;
-    int address_set_index = extract_index(address);
-    int address_tag = extract_tag(address);
-    int address_offset = extract_offset(address);
+    int set_idx = extract_index(address);
+    int tag     = extract_tag(address);
+    int offset  = extract_offset(address);
 
-    // Searching the set for a matching tag
-    for (CacheLine& cur_cache_line : this->cache_sets[address_set_index]) {
-        // Cache hit
-        if (cur_cache_line.valid && address_tag == cur_cache_line.tag) {
-            cur_cache_line.last_used = clock_cycle;
-            clock_cycle++;
-            cur_cache_line[address_offset] = data;
-            cur_cache_line.dirty = true;
+    auto &set = cache_sets[set_idx];
+    for (auto &ln : set) {
+        if (ln.valid && ln.tag == tag) {
+            ln.data[offset] = data;
+            ln.dirty        = true;
+            ln.last_used    = clock_cycle++;
             return;
         }
     }
-
-    // Cache miss
-    int starting_memory_address = address - address_offset;
-
-    evict_and_replace_cache_line(this->cache_sets[address_set_index], address_set_index, starting_memory_address);
-
-    // Calling the function again should now write the newly populated cache value
-    write_data(address, data);
-   
-    update_gui();
-}
-
-void Cache::update_gui() {
-    // Calculate the total number of rows (one row per cache line)
-    int total_rows = CACHE_NUM_SETS * CACHE_ASSOCIATIVITY;
-    mainWindow->cacheTable->setRowCount(total_rows);
-
-    int row = 0; // Row index for the table
-    for (int set_index = 0; set_index < CACHE_NUM_SETS; set_index++) {
-        for (int line_index = 0; line_index < CACHE_ASSOCIATIVITY; line_index++) {
-            CacheLine& cache_line = this->cache_sets[set_index][line_index];
-
-            // Set column: Display the set index
-            mainWindow->cacheTable->setItem(row, 0, new QTableWidgetItem(QString::number(set_index)));
-
-            // Tag column: Display the tag of the cache line
-            mainWindow->cacheTable->setItem(row, 1, new QTableWidgetItem(QString::number(cache_line.tag)));
-
-            // Block Data column: Display the data in the cache line
-            QString block_data;
-            for (int i = 0; i < CACHE_LINE_SIZE; i++) {
-                block_data += QString::number(mem_dtype_to_int(cache_line.data[i]));
-                if (i < CACHE_LINE_SIZE - 1) {
-                    block_data += ", "; // Separate data values with a comma
-                }
-            }
-            mainWindow->cacheTable->setItem(row, 2, new QTableWidgetItem(block_data));
-
-            row++; // Move to the next row
-        }
-    }
+    // Miss: write directly to memory
+    main_memory.write_data(address, data);
 }

@@ -1,6 +1,4 @@
-# ────────────────────────────────────────────────────────────────────────────────
-#  src/memory/CMakeLists.txt  –  builds libmemory.a
-# ────────────────────────────────────────────────────────────────────────────────
+# src/memory/CMakeLists.txt – builds libmemory.a
 
 set(MEMORY_SRCS
     Memory.cpp
@@ -8,17 +6,16 @@ set(MEMORY_SRCS
     Cache.cpp
     cache_set.cpp
     cache_line.cpp
+    utils.cpp         # ← added so mem_dtype_to_int, int_to_mem_dtype, print_data, etc. get compiled
 )
 
 add_library(memory STATIC ${MEMORY_SRCS})
 
 target_include_directories(memory
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}     # src/memory/
-        ${CMAKE_SOURCE_DIR}/include     # top-level include/
-        ${CMAKE_SOURCE_DIR}/src         # gives access to gui/mainwindow.h
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
 )
 
-target_link_libraries(memory
-    PUBLIC
-)
+# No need to link Qt here; backend is GUI-free

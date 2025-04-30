@@ -1,32 +1,46 @@
 #pragma once
+
 #include "system_constants.h"
 #include "pipeline_registers.h"
 #include "memory/Register.h"
 #include "memory/Memory.h"
 #include "memory/Cache.h"
 
-class MainWindow;
+// Five-stage pipeline core (no GUI dependencies)
+class five_stage_pipeline {
+public:
+    // Constructor: only needs the cache reference
+    explicit five_stage_pipeline(Cache& cache);
 
-class five_stage_pipeline{
-    public:
-        Register registers;
-        Cache& cache;
-        pipeline_reg ifr,next_ifr,idr,next_idr,exr,next_exr,memr,next_memr,wbr,next_wbr;
-        bool halted = false;
-        bool if_valid = false, id_valid = false, ex_valid = false, mem_valid = false, wb_valid = false;
+    // Register file and cache reference
+    Register    registers;
+    Cache&      cache;
 
-        five_stage_pipeline(Cache& cache, MainWindow* mainWindow);
+    // Pipeline registers: IF→ID→EX→MEM→WB
+    pipeline_reg ifr,   next_ifr;
+    pipeline_reg idr,   next_idr;
+    pipeline_reg exr,   next_exr;
+    pipeline_reg memr,  next_memr;
+    pipeline_reg wbr,   next_wbr;
 
-        
+    // Valid and control flags
+    bool halted    = false;
+    bool if_valid  = false;
+    bool id_valid  = false;
+    bool ex_valid  = false;
+    bool mem_valid = false;
+    bool wb_valid  = false;
 
-        void fetch();
-        void decode();
-        void execute();
-        void mem_stage();
-        void writeback();
-        void clock_cycle();
+    // Stage methods
+    void fetch();
+    void decode();
+    void execute();
+    void mem_stage();
+    void writeback();
 
-        void run_pipeline();
-    private:
-        MainWindow* mainWindow;
+    // Single-cycle tick
+    void clock_cycle();
+
+    // Run continuously until the pipeline drains or halts
+    void run_pipeline();
 };

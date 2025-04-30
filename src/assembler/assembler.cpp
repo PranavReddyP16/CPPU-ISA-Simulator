@@ -1,14 +1,11 @@
 #include "assembler.h"
+#include "memory/Memory.h"
 #include <sstream>
-#include <cstdint>
-#include <vector>
 #include <fstream>
-#include <memory/Memory.h>
-#include <gui/mainwindow.h>
-#include <qmessagebox.h>
+#include <iostream>
 
-Assembler::Assembler(Memory *mem) : mem(mem) { }
-Assembler::~Assembler() { }
+Assembler::Assembler(Memory *mem) : mem(mem) {}
+Assembler::~Assembler() = default;
 
 uint64_t Assembler::assembleInstrxn(const std::string& instrxnLine) {
     std::istringstream iss(instrxnLine);
@@ -16,104 +13,107 @@ uint64_t Assembler::assembleInstrxn(const std::string& instrxnLine) {
     iss >> instrxn;
 
     auto it = opcodeMap.find(instrxn);
-    if (it == opcodeMap.end())
-        QMessageBox::critical(mainWindow, "Error", "Unknown instruction: " + QString::fromStdString(instrxn));
-        // throw std::invalid_argument("Unknown instruction: " + instrxn);
+    if (it == opcodeMap.end()) {
+        std::cerr << "Unknown instruction: " << instrxn << std::endl;
+        return 0;
+    }
 
     uint64_t opcode = static_cast<uint64_t>(it->second);
-    uint64_t encoded = opcode << 58; // 6 bits shifted to the top
+    uint64_t encoded = opcode << 58; // 6 bits shifted to top
 
     if (instrxn == "IN" || instrxn == "OUT") {
         uint64_t addr, len;
         iss >> addr >> len;
-        encoded |= (addr << 26);    // 32 bits for address
-        encoded |= (len & 0x3FFFFF); // 22 bits for length
-    } else if (instrxn == "ILOAD" || instrxn == "FLOAD" || instrxn == "SLOAD" ||
-               instrxn == "ISTORE" || instrxn == "FSTORE" || instrxn == "SSTORE") {
+        encoded |= (addr << 26);
+        encoded |= (len & 0x3FFFFF);
+    }
+    else if (instrxn == "ILOAD" || instrxn == "FLOAD" || instrxn == "SLOAD" ||
+             instrxn == "ISTORE"|| instrxn == "FSTORE"|| instrxn == "SSTORE") {
         uint64_t reg, addr, len;
         iss >> reg >> addr >> len;
-        encoded |= (reg << 55);     // 3 bits for register
-        encoded |= (addr << 23);    // 32 bits for address
-        encoded |= (len & 0xFF);    // 8 bits for length
-    } else if (instrxn == "CALL" || instrxn == "JMP" || instrxn == "JE" ||
-               instrxn == "JNE" || instrxn == "JG" || instrxn == "JL" || instrxn == "JZ") {
+        encoded |= (reg << 55);
+        encoded |= (addr << 23);
+        encoded |= (len & 0xFF);
+    }
+    else if (instrxn == "CALL"|| instrxn == "JMP"|| instrxn == "JE" ||
+             instrxn == "JNE" ||instrxn == "JG"|| instrxn == "JL"||
+             instrxn == "JZ") {
         uint64_t target;
         iss >> target;
-        encoded |= (target << 26);   // 32 bits for target address
-        // 22 bits unused
-    } else if (instrxn == "CMP" || instrxn == "ADD" || instrxn == "FADD" ||
-               instrxn == "SUB" || instrxn == "FSUB" || instrxn == "MOD" ||
-               instrxn == "AND" || instrxn == "OR") {
+        encoded |= (target << 26);
+    }
+    else if (instrxn == "CMP"|| instrxn == "ADD"|| instrxn == "FADD"||
+             instrxn == "SUB"|| instrxn == "FSUB"|| instrxn == "MOD"||
+             instrxn == "AND"|| instrxn == "OR") {
         uint64_t r1, r2;
         iss >> r1 >> r2;
-        encoded |= (r1 << 55);      // 3 bits for r1
-        encoded |= (r2 << 52);      // 3 bits for r2
-    } else if (instrxn == "MUL" || instrxn == "FMUL" || instrxn == "DIV" || instrxn == "FDIV") {
+        encoded |= (r1 << 55);
+        encoded |= (r2 << 52);
+    }
+    else if (instrxn == "MUL"|| instrxn == "FMUL"|| instrxn == "DIV"|| instrxn == "FDIV") {
         uint64_t r1, r2, r3;
         iss >> r1 >> r2 >> r3;
         encoded |= (r1 << 55);
         encoded |= (r2 << 52);
         encoded |= (r3 << 49);
-    } else if (instrxn == "LSHIFT" || instrxn == "RSHIFT" || instrxn == "SETBIT" || instrxn == "CLRIT") {
+    }
+    else if (instrxn == "LSHIFT"|| instrxn == "RSHIFT"||
+             instrxn == "SETBIT"|| instrxn == "CLRIT") {
         uint64_t r1, amount, flag = 0;
         iss >> r1 >> amount;
-        if (instrxn == "LSHIFT" || instrxn == "RSHIFT") {
-            iss >> flag; // 1 bit flag for logical/arithmetic shift
-        }
+        if (instrxn == "LSHIFT" || instrxn == "RSHIFT")
+            iss >> flag;
         encoded |= (r1 << 55);
         encoded |= (amount << 47);
         encoded |= (flag << 46);
-    } else if (instrxn == "GETBIT") {
+    }
+    else if (instrxn == "GETBIT") {
         uint64_t r1, bit, r2;
         iss >> r1 >> bit >> r2;
         encoded |= (r1 << 55);
         encoded |= (bit << 47);
         encoded |= (r2 << 44);
-    } else if (instrxn == "POPCNT" || instrxn == "NOT") {
+    }
+    else if (instrxn == "POPCNT" || instrxn == "NOT") {
         uint64_t r1, r2 = 0;
         iss >> r1;
-        if (instrxn == "POPCNT") {
-            iss >> r2; // POPCNT needs second register
-        }
+        if (instrxn == "POPCNT") iss >> r2;
         encoded |= (r1 << 55);
         encoded |= (r2 << 52);
-    } else if (instrxn == "RET") {
-        // Nothing more needed; all operands are unused
-    } else
-        QMessageBox::critical(mainWindow, "Error", "Unhandled instruction type: " + QString::fromStdString(instrxn));
-        // throw std::invalid_argument("Unhandled instruction type: " + instrxn);
+    }
+    // RET and other single‐opcode cases fall through with just the opcode
 
     return encoded;
 }
 
-std::vector<std::uint64_t> Assembler::assembleProgram(std::vector<std::string> &programLines) {
-    std::vector<uint64_t> assembledProgram;
-    for (const auto& instrxn : programLines)
-        assembledProgram.push_back(assembleInstrxn(instrxn));
-    
-    return assembledProgram;
+std::vector<uint64_t> Assembler::assembleProgram(const std::vector<std::string> &programLines) {
+    std::vector<uint64_t> assembled;
+    assembled.reserve(programLines.size());
+    for (auto &ln : programLines)
+        assembled.push_back(assembleInstrxn(ln));
+    return assembled;
 }
 
-void Assembler::writeProgramToMemory(std::vector<std::uint64_t> &program) {
-    for (int i = 0; i < program.size(); i++)
-        mem->write_data(i, program[i]);
+void Assembler::writeProgramToMemory(const std::vector<uint64_t> &program) {
+    for (size_t i = 0; i < program.size(); ++i)
+        mem->write_data(static_cast<int>(i), program[i]);
 }
 
 void Assembler::loadProgram(const std::string &filename) {
     std::ifstream file(filename);
-    // if (!file.is_open())
-    //     QMessageBox::critical(mainWindow, "Error", "Could not open file: " + QString::fromStdString(filename));
+    if (!file.is_open()) {
+        std::cerr << "Cannot open file: " << filename << std::endl;
+        return;
+    }
 
-    std::vector<std::string> programLines;
+    std::vector<std::string> lines;
     std::string line;
     while (std::getline(file, line)) {
-        if (!line.empty() && line[0] != '#') // Ignore empty lines and comments
-            programLines.push_back(line);
+        if (!line.empty() && line[0] != '#')
+            lines.push_back(line);
     }
-    file.close();
 
-    std::vector<uint64_t> assembledProgram = assembleProgram(programLines);
-    writeProgramToMemory(assembledProgram);
-
-    std::cout << mem->read_data(0) << std::endl;
+    auto prog = assembleProgram(lines);
+    writeProgramToMemory(prog);
+    std::cout << "Assembly complete: wrote " << prog.size() << " instructions.\n";
 }

@@ -37,6 +37,7 @@ target_include_directories(simulator
 target_link_libraries(simulator
     PRIVATE
         Qt6::Widgets
+        Qt6::Concurrent
         memory          # ← supplies Register, Memory, Cache
         assembler
         pipeline
