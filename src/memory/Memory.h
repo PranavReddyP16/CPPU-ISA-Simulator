@@ -1,19 +1,27 @@
 #pragma once
 
 #include "system_constants.h"
-#include "gui/mainwindow.h"
+#include <algorithm>  // for std::fill
 
-// TODO check public private stuff I'm making everything public for now
 class Memory {
 public:
-    Memory(MainWindow* mainWindow);
+    Memory() {
+        // initialize to zero
+        std::fill(std::begin(data), std::end(data), 0);
+    }
 
-    MemoryDataType read_data(int address);
-    void write_data(int address, MemoryDataType data);
+    MemoryDataType read_data(int address) const {
+        return data[address];
+    }
 
-    MemoryDataType& operator[](int address);
-    
+    void write_data(int address, MemoryDataType value) {
+        data[address] = value;
+    }
+
+    MemoryDataType& operator[](int address) {
+        return data[address];
+    }
+
 private:
     MemoryDataType data[MEMORY_SIZE];
-    MainWindow* mainWindow;
 };

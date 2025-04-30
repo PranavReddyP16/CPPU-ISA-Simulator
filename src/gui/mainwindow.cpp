@@ -1,226 +1,221 @@
 #include "mainwindow.h"
-#include "system_constants.h"
+
 #include <QMenuBar>
+#include <QMenu>
+#include <QAction>
 #include <QMessageBox>
 #include <QVBoxLayout>
-#include <QTableWidget>
-#include <QCheckBox>
-#include <QLineEdit>
-#include <QPushButton>
 #include <QHBoxLayout>
+#include <QPushButton>
+#include <QCheckBox>
 #include <QFileDialog>
-#include <assembler/assembler.h>
-#include <pipeline/five_stage_pipeline.h>
+#include <QScrollBar>
+#include <QTimer>
 
+#include "system_constants.h"
+#include "memory/Memory.h"
+#include "memory/Cache.h"
+#include "assembler/assembler.h"
+#include "pipeline/five_stage_pipeline.h"
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
-    // Set up the main window
+// ────────────────────────────────────────────────────────────────────────────────
+//  Helper: hex-format helpers
+// ────────────────────────────────────────────────────────────────────────────────
+static inline QString hex8  (uint32_t v) { return QString("0x%1").arg(v, 8, 16, QChar('0')).toUpper(); }
+static inline QString hex2  (uint8_t  v) { return QString("%1").arg(v, 2, 16, QChar('0')).toUpper();  }
+static inline QString hexAdr(uint32_t v) { return QString("%1").arg(v, 4, 16, QChar('0')).toUpper();  }
+
+// ────────────────────────────────────────────────────────────────────────────────
+//  Constructor
+// ────────────────────────────────────────────────────────────────────────────────
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent),
+      /* back-end objects */
+      memory   (new Memory(MEMORY_SIZE)),
+      cache    (new Cache(*memory, ReplacementPolicy::LRU, this)),
+      assembler(new Assembler(memory)),
+      pipeline (new five_stage_pipeline(*cache, this)),
+      runTimer (new QTimer(this))
+{
     setWindowTitle("ISA Simulator");
 
-    // Create a menu bar
-    QMenuBar *menuBar = new QMenuBar(this);
-    setMenuBar(menuBar);
+    // ───────── menus ─────────
+    auto *mb = menuBar();
+    auto *file = mb->addMenu("File");
+    auto *actLoad = file->addAction("Load Program…");
+    auto *actQuit = file->addAction("Quit");
+    connect(actQuit, &QAction::triggered, this, &QWidget::close);
 
-    // Add a File menu
-    QMenu *fileMenu = menuBar->addMenu("File");
-    QAction *exitAction = fileMenu->addAction("Exit");
-    connect(exitAction, &QAction::triggered, this, &QMainWindow::close);
-
-    // Add a Help menu
-    QMenu *helpMenu = menuBar->addMenu("Help");
-    QAction *aboutAction = helpMenu->addAction("About");
-    connect(aboutAction, &QAction::triggered, [this]() {
-        QMessageBox::information(this, "About", "ISA Simulator\nVersion 1.0");
+    auto *help = mb->addMenu("Help");
+    help->addAction("About", [this]{
+        QMessageBox::information(this,"About","ISA Simulator demo – GUI core");
     });
 
-    QWidget *centralWidget = new QWidget(this);
-    setCentralWidget(centralWidget);
-    QVBoxLayout *layout = new QVBoxLayout(centralWidget);
-    centralWidget->setLayout(layout);
+    // ───────── central layout ─────────
+    auto *cw = new QWidget(this);
+    auto *v  = new QVBoxLayout(cw);
+    cw->setLayout(v);
+    setCentralWidget(cw);
 
-    // Horizontal layout for checkboxes
-    QHBoxLayout *checkboxLayout = new QHBoxLayout();
+    // ─── top-row check-boxes ───
+    auto *hMode = new QHBoxLayout;
+    chkCache    = new QCheckBox("Cache Enable");
+    chkPipeline = new QCheckBox("Pipeline Enable");
+    chkCache   ->setChecked(true);
+    chkPipeline->setChecked(true);
+    hMode->addWidget(chkCache);
+    hMode->addWidget(chkPipeline);
+    hMode->addStretch();
+    v->addLayout(hMode);
 
-        // Cache Enable
-        QCheckBox *cacheEnableCheckbox = new QCheckBox("Cache Enable", this);
-        cacheEnableCheckbox->setChecked(true);
-        checkboxLayout->addWidget(cacheEnableCheckbox);
-        
-        // Pipeline Enable
-        QCheckBox *pipelineEnableCheckbox = new QCheckBox("Pipeline Enable", this);
-        pipelineEnableCheckbox->setChecked(false);
-        checkboxLayout->addWidget(pipelineEnableCheckbox);
-        
-    checkboxLayout->addStretch();
-    checkboxLayout->setAlignment(Qt::AlignRight);
-    layout->addLayout(checkboxLayout);
-
-    // Add a text field to display the current cycle count
-    cycleCount = new QLineEdit(this);
+    // ─── cycle counter ───
+    cycleCount = new QLineEdit("0");
     cycleCount->setReadOnly(true);
-    cycleCount->setText("0");
-    layout->addWidget(cycleCount);
+    v->addWidget(cycleCount);
 
-    // Horizontal layout for control buttons
-    QHBoxLayout *controlButtonsLayout = new QHBoxLayout();
-        // Add Run button
-        QPushButton *runButton = new QPushButton("Run", this);
-        connect(runButton, &QPushButton::clicked, [this]() {
-            // Placeholder for run functionality
-            QMessageBox::information(this, "Run", "Run button clicked. Implement the run logic here.");
-            // pipeline->halted = false;
-        });
-        controlButtonsLayout->addWidget(runButton);
+    // ─── control buttons ───
+    auto *hCtl = new QHBoxLayout;
+    btnRun   = new QPushButton("Run");
+    btnHalt  = new QPushButton("Halt");
+    btnStep  = new QPushButton("Step");
+    btnReset = new QPushButton("Reset");
+    hCtl->addWidget(btnRun);
+    hCtl->addWidget(btnHalt);
+    hCtl->addWidget(btnStep);
+    hCtl->addWidget(btnReset);
+    v->addLayout(hCtl);
 
-        // Add Halt button
-        QPushButton *haltButton = new QPushButton("Halt", this);
-        connect(haltButton, &QPushButton::clicked, [this]() {
-            pipeline->halted = true;
-        });
-        controlButtonsLayout->addWidget(haltButton);
-
-        // Add Step button
-        QPushButton *stepButton = new QPushButton("Step", this);
-        connect(stepButton, &QPushButton::clicked, [this]() {
-            // Placeholder for step functionality
-            QMessageBox::information(this, "Step", "Step button clicked. Implement the step logic here.");
-        });
-        controlButtonsLayout->addWidget(stepButton);
-
-        // Add Restart button
-        QPushButton *restartButton = new QPushButton("Reset", this);
-        connect(restartButton, &QPushButton::clicked, [this]() {
-            // Placeholder for restart functionality
-            QMessageBox::information(this, "Restart", "Restart button clicked. Implement the restart logic here.");
-        });
-        controlButtonsLayout->addWidget(restartButton);
-
-    layout->addLayout(controlButtonsLayout);
-    
-    // Program box
-    QTableWidget *programTable = new QTableWidget(this);
-    programTable->setColumnCount(3);
-    programTable->setHorizontalHeaderLabels({"Breakpoint", "Instruction", "Pipeline Stage"});
-    programTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    layout->addWidget(programTable);
-
-    // Load Program button
-    QPushButton *loadProgramButton = new QPushButton("Load Program", this);
-    connect(loadProgramButton, &QPushButton::clicked, [this]() {
-        QString filename = QFileDialog::getOpenFileName(this, "Load Program", "", "All Files (*)");
-        assembler->loadProgram(filename.toStdString());
-    });
-    layout->addWidget(loadProgramButton);
-
-    // pipelineTable = new QTableWidget(this);
-    // pipelineTable->setColumnCount(5);
-    // pipelineTable->setHorizontalHeaderLabels({"fetch", "decode", "execute", "mem_stage", "writeback"});
-    // pipelineTable->setRowCount(1);
-    // pipelineTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    // layout->addWidget(pipelineTable);
-
+    // ─── register table ───
     registerTable = new QTableWidget(this);
     registerTable->setColumnCount(2);
     registerTable->setHorizontalHeaderLabels({"Register", "Value"});
     registerTable->setRowCount(22);
-    registerTable->setItem(0, 0, new QTableWidgetItem("PC"));
-    registerTable->setItem(0, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(1, 0, new QTableWidgetItem("IR"));
-    registerTable->setItem(1, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(2, 0, new QTableWidgetItem("SP"));
-    registerTable->setItem(2, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(3, 0, new QTableWidgetItem("BP"));
-    registerTable->setItem(3, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(4, 0, new QTableWidgetItem("RA"));
-    registerTable->setItem(4, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(5, 0, new QTableWidgetItem("SR"));
-    registerTable->setItem(5, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(6, 0, new QTableWidgetItem("GPR[0]"));
-    registerTable->setItem(6, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(7, 0, new QTableWidgetItem("GPR[1]"));
-    registerTable->setItem(7, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(8, 0, new QTableWidgetItem("GPR[2]"));
-    registerTable->setItem(8, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(9, 0, new QTableWidgetItem("GPR[3]"));
-    registerTable->setItem(9, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(10, 0, new QTableWidgetItem("GPR[4]"));
-    registerTable->setItem(10, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(11, 0, new QTableWidgetItem("GPR[5]"));
-    registerTable->setItem(11, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(12, 0, new QTableWidgetItem("GPR[6]"));
-    registerTable->setItem(12, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(13, 0, new QTableWidgetItem("GPR[7]"));
-    registerTable->setItem(13, 1, new QTableWidgetItem("0"));
-    registerTable->setItem(14, 0, new QTableWidgetItem("FPR[0]"));
-    registerTable->setItem(14, 1, new QTableWidgetItem("0.0"));
-    registerTable->setItem(15, 0, new QTableWidgetItem("FPR[1]"));
-    registerTable->setItem(15, 1, new QTableWidgetItem("0.0"));
-    registerTable->setItem(16, 0, new QTableWidgetItem("FPR[2]"));
-    registerTable->setItem(16, 1, new QTableWidgetItem("0.0"));
-    registerTable->setItem(17, 0, new QTableWidgetItem("FPR[3]"));
-    registerTable->setItem(17, 1, new QTableWidgetItem("0.0"));
-    registerTable->setItem(18, 0, new QTableWidgetItem("FPR[4]"));
-    registerTable->setItem(18, 1, new QTableWidgetItem("0.0"));
-    registerTable->setItem(19, 0, new QTableWidgetItem("FPR[5]"));
-    registerTable->setItem(19, 1, new QTableWidgetItem("0.0"));
-    registerTable->setItem(20, 0, new QTableWidgetItem("FPR[6]"));
-    registerTable->setItem(20, 1, new QTableWidgetItem("0.0"));
-    registerTable->setItem(21, 0, new QTableWidgetItem("FPR[7]"));
-    registerTable->setItem(21, 1, new QTableWidgetItem("0.0"));
-    registerTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    layout->addWidget(registerTable);
-
-    // Memory Table
-    memoryTable = new QTableWidget(this);
-    memoryTable->setColumnCount(17);
-    memoryTable->setHorizontalHeaderLabels({"Addr", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"});
-    memoryTable->setRowCount(MEMORY_SIZE/16);
-    for (int i = 0; i < MEMORY_SIZE/16; ++i) {
-        QTableWidgetItem *addressItem = new QTableWidgetItem(QString("%1").arg(i * 16, 4, 16, QChar('0')).toUpper());
-        QFont font = addressItem->font();
-        font.setBold(true);
-        addressItem->setFont(font);
-        memoryTable->setItem(i, 0, addressItem);
-        for (int j = 1; j < 17; ++j)
-            memoryTable->setItem(i, j, new QTableWidgetItem(QString("%1").arg(0, 16, 16, QChar('0')).toUpper()));
+    const char* rowNames[22] = {
+        "PC","IR","SP","BP","RA","SR",
+        "GPR[0]","GPR[1]","GPR[2]","GPR[3]","GPR[4]","GPR[5]","GPR[6]","GPR[7]",
+        "FPR[0]","FPR[1]","FPR[2]","FPR[3]","FPR[4]","FPR[5]","FPR[6]","FPR[7]"
+    };
+    for (int r=0;r<22;++r){
+        registerTable->setItem(r,0,new QTableWidgetItem(rowNames[r]));
+        registerTable->setItem(r,1,new QTableWidgetItem("0"));
     }
-    memoryTable->resizeColumnsToContents();
-    memoryTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    layout->addWidget(memoryTable);
+    registerTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    v->addWidget(registerTable);
 
+    // ─── memory table (show first 256 rows = 4 KiB max) ───
+    memoryTable = new QTableWidget(this);
+    memRows = std::min(MEMORY_SIZE/16, 256);
+    memoryTable->setRowCount(memRows);
+    memoryTable->setColumnCount(17);
+    QStringList hdr{"Addr"};
+    for(char c='0';c<='9';++c) hdr<<QString(c);
+    for(char c='A';c<='F';++c) hdr<<QString(c);
+    memoryTable->setHorizontalHeaderLabels(hdr);
+    memoryTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    v->addWidget(memoryTable);
+
+    // ─── cache summary ───
     cacheTable = new QTableWidget(this);
     cacheTable->setColumnCount(3);
-    cacheTable->setHorizontalHeaderLabels({"Set", "Tag", "Block Data"});
+    cacheTable->setHorizontalHeaderLabels({"Set","Tag","Block Data"});
     cacheTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    layout->addWidget(cacheTable);
+    v->addWidget(cacheTable);
+
+    // ───────── actions wiring ─────────
+    connect(actLoad,&QAction::triggered,this,&MainWindow::actionLoadProgram);
+
+    connect(btnRun ,&QPushButton::clicked,[this]{ if(!runTimer->isActive()) runTimer->start(0); });
+    connect(btnHalt,&QPushButton::clicked,[this]{ runTimer->stop(); });
+    connect(btnStep,&QPushButton::clicked,this,&MainWindow::tickOnce);
+    connect(btnReset,&QPushButton::clicked,[this]{
+        runTimer->stop();
+        *pipeline = five_stage_pipeline(*cache,this);   // re-construct
+        cycles = 0;
+        cycleCount->setText("0");
+        refreshGui();
+    });
+
+    connect(runTimer,&QTimer::timeout,this,&MainWindow::tickOnce);
+
+    refreshGui();
 }
 
-MainWindow::~MainWindow() {
-    exit(0);
+// ────────────────────────────────────────────────────────────────────────────────
+//  Destructor  – Qt cleans children, no exit(0)
+// ────────────────────────────────────────────────────────────────────────────────
+MainWindow::~MainWindow() = default;
+
+// ────────────────────────────────────────────────────────────────────────────────
+//  Load program action
+// ────────────────────────────────────────────────────────────────────────────────
+void MainWindow::actionLoadProgram()
+{
+    QString fname = QFileDialog::getOpenFileName(this,"Load Program","","Assembly (*.s *.asm);;All (*)");
+    if(fname.isEmpty()) return;
+
+    assembler->loadProgram(fname.toStdString());
+    /* assembler already wrote into Memory – PC = 0 */
+    *pipeline = five_stage_pipeline(*cache,this);   // fresh pipeline
+    cycles = 0;
+    cycleCount->setText("0");
+    refreshGui();
 }
 
-void MainWindow::setRegisterValue(char* reg, int value) {
-    for (int i = 0; i < registerTable->rowCount(); ++i) {
-        QTableWidgetItem *item = registerTable->item(i, 0);
-        if (item && QString(item->text()).compare(QString(reg)) == 0) {
-            registerTable->setItem(i, 1, new QTableWidgetItem(QString("%1").arg(value)));
-            return;
+// ────────────────────────────────────────────────────────────────────────────────
+//  One simulator cycle
+// ────────────────────────────────────────────────────────────────────────────────
+void MainWindow::tickOnce()
+{
+    if(pipeline->halted){
+        runTimer->stop();
+        return;
+    }
+    pipeline->clock_cycle();
+    ++cycles;
+    cycleCount->setText(QString::number(cycles));
+    refreshGui();
+}
+
+// ────────────────────────────────────────────────────────────────────────────────
+//  GUI refresh – registers, memory window, cache
+// ────────────────────────────────────────────────────────────────────────────────
+void MainWindow::refreshGui()
+{
+    /* ─ registers ─ */
+    const Register& R = pipeline->registers;
+    QString regVals[22] = {
+        hex8(R.PC), hex8(R.IR), hex8(R.SP), hex8(R.BP), hex8(R.RA), hex8(R.SR),
+        hex8(R.GPR[0]), hex8(R.GPR[1]), hex8(R.GPR[2]), hex8(R.GPR[3]),
+        hex8(R.GPR[4]), hex8(R.GPR[5]), hex8(R.GPR[6]), hex8(R.GPR[7]),
+        QString::number(R.FPR[0]), QString::number(R.FPR[1]), QString::number(R.FPR[2]), QString::number(R.FPR[3]),
+        QString::number(R.FPR[4]), QString::number(R.FPR[5]), QString::number(R.FPR[6]), QString::number(R.FPR[7])
+    };
+    for(int r=0;r<22;++r) registerTable->item(r,1)->setText(regVals[r]);
+
+    /* ─ memory window (first memRows rows) ─ */
+    for(int row=0; row<memRows; ++row){
+        uint32_t base = row*16;
+        if(!memoryTable->item(row,0))
+            memoryTable->setItem(row,0,new QTableWidgetItem);
+        memoryTable->item(row,0)->setText(hexAdr(base));
+        for(int col=0;col<16;++col){
+            uint8_t byte = static_cast<uint8_t>( cache->read_data(base+col) & 0xFF );
+            if(!memoryTable->item(row,col+1))
+                memoryTable->setItem(row,col+1,new QTableWidgetItem);
+            memoryTable->item(row,col+1)->setText(hex2(byte));
         }
     }
-    // If we reach here, the register was not found, you may want to handle this case
-    QMessageBox::warning(this, "Error", QString("Register %1 not found.").arg(QString(reg)));
-    return;
-}
 
-void MainWindow::setRegisterValue(char* reg, float value) {
-    for (int i = 0; i < registerTable->rowCount(); ++i) {
-        QTableWidgetItem *item = registerTable->item(i, 0);
-        if (item && QString(item->text()).compare(QString(reg)) == 0) {
-            registerTable->setItem(i, 1, new QTableWidgetItem(QString("%1").arg(value)));
-            return;
-        }
+    /* ─ cache view ─ */
+    cacheTable->setRowCount(CACHE_NUM_SETS);
+    for(int s=0;s<CACHE_NUM_SETS;++s){
+        if(!cacheTable->item(s,0)) cacheTable->setItem(s,0,new QTableWidgetItem);
+        cacheTable->item(s,0)->setText(QString::number(s));
+
+        if(!cacheTable->item(s,1)) cacheTable->setItem(s,1,new QTableWidgetItem);
+        cacheTable->item(s,1)->setText(QString::number(cache->cache_sets[s].tag,16));
+
+        if(!cacheTable->item(s,2)) cacheTable->setItem(s,2,new QTableWidgetItem);
+        cacheTable->item(s,2)->setText("…");     // replace with block-dump if desired
     }
-    // If we reach here, the register was not found, you may want to handle this case
-    QMessageBox::warning(this, "Error", QString("Register %1 not found.").arg(QString(reg)));
-    return;
 }

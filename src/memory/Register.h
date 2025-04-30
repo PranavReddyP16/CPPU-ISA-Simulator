@@ -1,7 +1,8 @@
 #pragma once
 
 #include "system_constants.h"
-#include "gui/mainwindow.h"
+
+class MainWindow;
 
 class Register {
 public:

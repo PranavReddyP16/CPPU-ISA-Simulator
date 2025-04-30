@@ -1,27 +1,41 @@
-#pragma once
-
-#include <QMainWindow>
-#include <QLineEdit>
-#include <QTableWidget>
-class five_stage_pipeline;
-class Assembler;
+#include <QTimer>
+#include "memory/Memory.h"
+#include "memory/Cache.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
-
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    void setRegisterValue(char* reg, int value);
-    void setRegisterValue(char* reg, float value);
+    /* … existing methods … */
 
-    QLineEdit *cycleCount;
-    // QTableWidget *pipelineTable;
+    QCheckBox *chkCache;
+    QCheckBox *chkPipeline;
+
+    QPushButton *btnRun;
+    QPushButton *btnHalt;
+    QPushButton *btnStep;
+    QPushButton *btnReset;
+
+    /* existing public members unchanged */
+    QLineEdit    *cycleCount;
     QTableWidget *registerTable;
     QTableWidget *memoryTable;
     QTableWidget *cacheTable;
 
-    Assembler *assembler;
-    five_stage_pipeline *pipeline;
+    Assembler          *assembler;
+    five_stage_pipeline*pipeline;
+
+private:
+    Memory *memory;
+    Cache  *cache;
+
+    QTimer *runTimer;
+    int     cycles = 0;
+    int     memRows;
+
+    void actionLoadProgram();
+    void tickOnce();
+    void refreshGui();
 };

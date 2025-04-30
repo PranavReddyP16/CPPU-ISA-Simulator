@@ -4,7 +4,8 @@
 #include "cache_set.h"
 #include "cache_line.h"
 #include "Memory.h"
-#include "gui/mainwindow.h"
+
+class MainWindow;
 
 class Cache {
 private:

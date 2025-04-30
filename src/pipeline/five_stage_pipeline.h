@@ -4,7 +4,8 @@
 #include "memory/Register.h"
 #include "memory/Memory.h"
 #include "memory/Cache.h"
-#include "gui/mainwindow.h"
+
+class MainWindow;
 
 class five_stage_pipeline{
     public:
