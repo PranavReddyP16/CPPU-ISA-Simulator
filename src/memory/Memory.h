@@ -2,6 +2,7 @@
 
 #include "system_constants.h"
 #include <algorithm>  // for std::fill
+#include <cstring>   // for std::memcpy
 
 class Memory {
 public:
@@ -11,17 +12,19 @@ public:
     }
 
     MemoryDataType read_data(int address) const {
-        return data[address];
+        MemoryDataType value;
+        std::memcpy(&value, &data[address], sizeof(MemoryDataType));
+        return value;
     }
 
     void write_data(int address, MemoryDataType value) {
-        data[address] = value;
+        std::memcpy(&data[address], &value, sizeof(MemoryDataType));
     }
 
-    MemoryDataType& operator[](int address) {
+    char& operator[](int address) {
         return data[address];
     }
 
 private:
-    MemoryDataType data[MEMORY_SIZE];
+    char data[MEMORY_SIZE];
 };

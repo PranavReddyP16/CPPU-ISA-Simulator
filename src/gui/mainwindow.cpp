@@ -87,7 +87,7 @@ MainWindow::MainWindow(QWidget *parent)
         registerTable->setItem(r, 1, new QTableWidgetItem(""));
 
     // Memory table (first 256 rows)
-    memRows = std::min(MEMORY_SIZE/16, 256);
+    memRows = MEMORY_SIZE/16;
     memoryTable = new QTableWidget(memRows,17,this);
     QStringList hdr{"Addr"};
     for(int c=0;c<16;++c) hdr << QString::number(c,16).toUpper();
@@ -131,6 +131,7 @@ MainWindow::~MainWindow() {
     delete assembler;
     delete cache;
     delete memory;
+    exit(0);
 }
 
 void MainWindow::actionLoadProgram() {
