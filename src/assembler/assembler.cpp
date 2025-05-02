@@ -87,10 +87,33 @@ uint64_t Assembler::assembleInstrxn(const std::string& instrxnLine) {
 }
 
 std::vector<uint64_t> Assembler::assembleProgram(const std::vector<std::string> &programLines) {
+    int address = 0;
+    for (auto &ln : programLines) {
+        std::istringstream iss(ln);
+        std::string token;
+        iss >> token;
+
+        // Check if the line is a label (ends with ':')
+        if (token.back() == ':') {
+            std::string label = token.substr(0, token.size() - 1); // Remove the ':'
+            if (labelMap.find(label) != labelMap.end()) {
+                std::cerr << "Duplicate label: " << label << std::endl;
+                continue;
+            }
+            labelMap[label] = address; // Store the label and its address
+        } else {
+            // If not a label, it's an instruction
+            ++address;
+        }
+    }
+
     std::vector<uint64_t> assembled;
     assembled.reserve(programLines.size());
-    for (auto &ln : programLines)
+    for (auto &ln : programLines) {
+        if (ln.back() == ':')
+            continue;
         assembled.push_back(assembleInstrxn(ln));
+    }
     return assembled;
 }
 
@@ -109,7 +132,7 @@ void Assembler::loadProgram(const std::string &filename) {
     std::vector<std::string> lines;
     std::string line;
     while (std::getline(file, line)) {
-        if (!line.empty() && line[0] != '#')
+        if (!line.empty() && line[0] != ';')
             lines.push_back(line);
     }
 

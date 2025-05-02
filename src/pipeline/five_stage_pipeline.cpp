@@ -53,7 +53,9 @@ void five_stage_pipeline::execute() {
     sleep(1);
     std::cout<<"=================Executing Stage======================"<<std::endl;
     // (printing exr contents omitted for brevity)
-    if (exr.opcode == 0b000101) {
+    if (exr.opcode == 0b11111111) {
+        halted = true;
+    } else if (exr.opcode == 0b000101) {
         exr.mem_address = exr.rs1 + exr.imm;
     } else if (exr.opcode == 0b000000) {
         exr.mem_address = exr.rs1;

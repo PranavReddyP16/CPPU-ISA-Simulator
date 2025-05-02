@@ -72,6 +72,11 @@ MainWindow::MainWindow(QWidget *parent)
     hCtl->addWidget(btnReset);
     v->addLayout(hCtl);
 
+    // Load Program button
+    auto *btnLoadProgram = new QPushButton("Load Program");
+    v->addWidget(btnLoadProgram);
+    connect(btnLoadProgram, &QPushButton::clicked, this, &MainWindow::actionLoadProgram);
+
     // Register table
     registerTable = new QTableWidget(22, 2, this);
     registerTable->setHorizontalHeaderLabels({"Register","Value"});
@@ -178,6 +183,7 @@ void MainWindow::refreshGui() {
             memoryTable->item(row,col+1)->setText(hex2(b));
         }
     }
+    memoryTable->resizeColumnsToContents();
 
     // Cache
     int sets = Cache::numSets();

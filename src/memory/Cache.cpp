@@ -1,4 +1,5 @@
 #include <iostream>
+#include <climits>
 #include "Cache.h"
 #include "system_constants.h"
 #include "Memory.h"

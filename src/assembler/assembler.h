@@ -52,8 +52,11 @@ private:
         {"POPCNT", 0b011111},
         {"AND",    0b100000},
         {"OR",     0b100001},
-        {"NOT",    0b100010}
+        {"NOT",    0b100010},
+        {"HLT",    0b111111}
     };
+
+    std::unordered_map<std::string, int> labelMap; // Label to address map
 
     Memory *mem;
 
