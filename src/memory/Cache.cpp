@@ -1,6 +1,7 @@
 #include "Cache.h"
 #include "utils.h"
 #include <iostream>
+#include <climits>
 
 Cache::Cache(Memory &main_memory, ReplacementPolicy rp)
   : main_memory(main_memory), replacement_policy(rp)

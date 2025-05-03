@@ -12,5 +12,5 @@ public:
     MemoryDataType& operator[](int address);
 
 private:
-    char data[MEMORY_SIZE];
+    MemoryDataType data[MEMORY_SIZE];
 };
