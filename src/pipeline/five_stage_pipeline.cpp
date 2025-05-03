@@ -1,143 +1,129 @@
 #include "five_stage_pipeline.h"
-#include "system_constants.h"
 #include "instruction_helpers.h"
-#include "alu/ALU.h"
-#include "memory/Register.h"
-#include "memory/Memory.h"
-#include "memory/Cache.h"
 #include "memory/utils.h"
+#include "alu/ALU.h"
 #include <iostream>
-#include <unistd.h>
 
-// Constructor: initialize pipeline registers and link cache
-five_stage_pipeline::five_stage_pipeline(Cache& c)
-  : cache(c),
-    registers()
+using OP = Opcodes;
+
+five_stage_pipeline::five_stage_pipeline(Cache &c)
+  : cache(c)
 {
-    // Initialize pipeline registers to NOP state
-    ifr = {0, 0};                     // only two fields (PC, instruction)
-    idr = {0, 0, 0, 0};
-    exr = {0, 0, 0, 0, 0};
-    memr= {0, 0, 0};
-    wbr = {0, 0};
+    regs.reset();
+    halted = false;
+    if_valid = id_valid = ex_valid = mem_valid = wb_valid = false;
 }
 
-// ------------------- IF stage -------------------
 void five_stage_pipeline::fetch() {
-    sleep(1);
-    std::cout<<"=================Fetching Stage======================"<<std::endl;
-    // (printing ifr contents omitted for brevity)
-    ifr.instruction = mem_dtype_to_int(cache.read_data(ifr.PC));
-    if (ifr.instruction == 0b11111111) {
-        halted = true;
-        std::cout << "HALT instruction fetched — stopping fetch.\n";
-    } else {
-        ifr.PC += 1;
-    }
+    if (halted) { if_valid=false; return; }
+
+    uint64_t inst = cache.read_data(regs.PC);
+    ifr.instruction = inst;
+    ifr.PC     = regs.PC;
+    ifr.opcode = extract_opcode(inst);
+    if_valid   = true;
+
+    regs.PC += 1;
+    if (ifr.opcode == OP::HLT_OP) halted = true;
 }
 
-// ------------------- ID stage -------------------
+/* ─── decode ───────────────────────────────────────────── */
 void five_stage_pipeline::decode() {
-    sleep(1);
-    std::cout<<"=================Decoding Stage======================"<<std::endl;
-    // (printing idr contents omitted for brevity)
-    idr.opcode = extract_opcode(idr.instruction);
-    idr.rs1    = extract_rs1(idr.instruction);
-    idr.rs2    = extract_rs2(idr.instruction);
-    idr.rd     = extract_rd(idr.instruction);
-    idr.imm    = (idr.opcode == 0b000101) ? extract_imm(idr.instruction) : 0;
+    if (!if_valid) { id_valid=false; return; }
+    idr = ifr; id_valid = true;
+
+    uint64_t inst = idr.instruction;
+    int opc       = idr.opcode;
+
+    if (opc == OP::LI_OP) {
+        idr.rd  = extract_rs1(inst);
+        idr.imm = inst & 0x007FFFFFFFFFFFFFULL;
+    }
+    else if (opc == OP::ILOAD_OP) {
+        idr.rd          = extract_rs1(inst);
+        idr.mem_address = extract_mem_address(inst);
+    }
+    else if (opc == OP::ISTORE_OP) {
+        idr.rs1         = extract_rs1(inst);
+        idr.mem_address = extract_mem_address(inst);
+    }
+    else {                                   // ALU two-operand
+        idr.rd  = extract_rs1(inst);         // rd encoded in bits 55-53
+        idr.rs1 = idr.rd;                    // two-operand form: rs1 == rd
+        idr.rs2 = extract_rs2(inst);         // source register
+    }
 }
 
-// ------------------- EX stage -------------------
+/* ─── execute ──────────────────────────────────────────── */
 void five_stage_pipeline::execute() {
-    sleep(1);
-    std::cout<<"=================Executing Stage======================"<<std::endl;
-    // (printing exr contents omitted for brevity)
-    if (exr.opcode == 0b11111111) {
-        halted = true;
-    } else if (exr.opcode == 0b000101) {
-        exr.mem_address = exr.rs1 + exr.imm;
-    } else if (exr.opcode == 0b000000) {
-        exr.mem_address = exr.rs1;
-    } else if (exr.opcode == 0b000001) {
-        exr.mem_address = exr.rs1;
-        exr.write_data = exr.rs2;
-    } else {
-        exr.alu_res = ALU::execute(exr.opcode,
-                                   registers.GPR[exr.rs1],
-                                   registers.GPR[exr.rs2]);
+    if (!id_valid){ ex_valid=false; return; }
+    exr = idr; ex_valid=true;
+
+    int opc = exr.opcode;
+
+    if (opc == OP::LI_OP) {
+        exr.write_data = exr.imm;
+        exr.reg_write  = true;
+    }
+    else if (opc == OP::ADD_OP || opc == OP::SUB_OP ||
+             opc == OP::MUL_OP || opc == OP::DIV_OP ||
+             opc == OP::MOD_OP || opc == OP::AND_OP ||
+             opc == OP::OR_OP  || opc == OP::NOT_OP) {
+
+        int a = regs.read_register(exr.rs1);
+        int b = regs.read_register(exr.rs2);
+        exr.alu_res    = ALU::execute(opc,a,b);
+        exr.write_data = exr.alu_res;
+        exr.reg_write  = true;
+    }
+    else if (opc == OP::ISTORE_OP) {
+        exr.write_data = regs.read_register(exr.rs1);
+        exr.mem_write  = true;
+        exr.reg_write  = false;
     }
 }
 
-// ------------------- MEM stage -------------------
+/* ─── memory ───────────────────────────────────────────── */
 void five_stage_pipeline::mem_stage() {
-    sleep(1);
-    std::cout<<"=================Memory Stage======================"<<std::endl;
-    // (printing memr contents omitted for brevity)
-    if (memr.opcode == 0b000001) {
-        memr.write_data = mem_dtype_to_int(cache.read_data(memr.mem_address));
-    } else if (memr.opcode == 0b000000) {
-        cache.write_data(memr.mem_address, int_to_mem_dtype(memr.rs2));
-    } else {
-        memr.write_data = memr.alu_res;
+    if (!ex_valid){ mem_valid=false; return; }
+    memr = exr; mem_valid=true;
+
+    int opc = memr.opcode;
+    if (opc == OP::ILOAD_OP) {
+        auto v = cache.read_data(memr.mem_address);
+        memr.write_data = int(mem_dtype_to_int(v));
+        memr.reg_write  = true;
+    }
+    else if (opc == OP::ISTORE_OP) {
+        cache.write_data(memr.mem_address,
+                         int_to_mem_dtype(memr.write_data));
+        memr.reg_write = false;
     }
 }
 
-// ------------------- WB stage -------------------
+/* ─── write back ──────────────────────────────────────── */
 void five_stage_pipeline::writeback() {
-    sleep(1);
-    std::cout<<"=================WriteBack Stage======================"<<std::endl;
-    if (wbr.opcode != -1) {
-        registers.write_register(wbr.rd, wbr.write_data);
+    if (!mem_valid){ wb_valid=false; return; }
+    wbr = memr; wb_valid=true;
+
+    if (wbr.reg_write && wbr.rd < 8) {
+        regs.write_register(wbr.rd, wbr.write_data);
+        std::cout << ">> WB: GPR[" << int(wbr.rd) << "] = "
+                  << wbr.write_data << std::endl;
     }
 }
 
-// ------------------- Single clock tick -------------------
+/* ─── one clock ───────────────────────────────────────── */
 void five_stage_pipeline::clock_cycle() {
-    // Advance in reverse order (WB→MEM→EX→ID→IF)
-    if (wb_valid)  writeback();
-    if (mem_valid) mem_stage();
-    if (ex_valid)  execute();
-    if (id_valid)  decode();
-    if (!halted)   fetch();
-
-    // Hazard detection & stall logic (unchanged)
-    bool hazard = false;
-    if (exr.opcode != -1 && ((idr.rs1 == exr.rd && exr.rd != 0) ||
-                             (idr.rs2 == exr.rd && exr.rd != 0)))
-        hazard = true;
-    if (memr.opcode != -1 && ((idr.rs1 == memr.rd && memr.rd != 0) ||
-                              (idr.rs2 == memr.rd && memr.rd != 0)))
-        hazard = true;
-
-    // Propagate validity bits with or without a stall
-    wbr       = memr;
-    memr      = exr;
-    if (hazard) {
-        ex_valid = false;      // insert bubble in EX
-    } else {
-        exr       = idr;
-        idr       = ifr;
-    }
-    wb_valid  = mem_valid;
-    mem_valid = ex_valid;
-    ex_valid  = id_valid;
-    id_valid  = if_valid;
-    if_valid  = !halted;
+    writeback();
+    mem_stage();
+    execute();
+    decode();
+    fetch();
 }
 
-// ------------------- Continuous run -------------------
+/* run to completion (used by unit tests) */
 void five_stage_pipeline::run_pipeline() {
-    int cycle = 0;
-    while ((if_valid || id_valid || ex_valid || mem_valid || wb_valid || !halted)
-           && cycle < 20) {
-        std::cout << "=== Clock Cycle: " << cycle << " ===\n";
+    while(!(halted && !if_valid&& !id_valid&& !ex_valid&& !mem_valid&& !wb_valid))
         clock_cycle();
-        // Touch first 16 bytes to exercise cache
-        for (int i = 0; i < 16; ++i) {
-            cache.read_data(i);
-        }
-        ++cycle;
-        // GUI update now happens in MainWindow::refreshGui()
-    }
 }

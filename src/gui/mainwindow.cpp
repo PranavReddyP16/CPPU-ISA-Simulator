@@ -7,127 +7,186 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFileDialog>
+#include <QLabel>
+#include <QHeaderView>
+#include <QTabWidget>
+#include <QTableWidget>
+#include <QCheckBox>
+#include <QPushButton>
+#include <QLineEdit>
+#include <QTimer>
 
 #include "system_constants.h"
-#include "memory/Memory.h"
 #include "memory/utils.h"
+#include "memory/Memory.h"
+#include "memory/Cache.h"
 #include "assembler/assembler.h"
 #include "pipeline/five_stage_pipeline.h"
 
-// Helpers for hex formatting
-static inline QString hex2(uint8_t  v) { return QString("%1").arg(v, 2, 16, QChar('0')).toUpper(); }
+// Helpers to format hex in the tables
+static inline QString hex2(uint8_t v)  { return QString("%1").arg(v, 2, 16, QChar('0')).toUpper(); }
 static inline QString hex4(uint32_t v) { return QString("%1").arg(v, 4, 16, QChar('0')).toUpper(); }
-static inline QString hex8(uint32_t v) { return QString("0x%1").arg(v, 8, 16, QChar('0')).toUpper(); }
+static inline QString hex8(uint64_t v) { return QString("0x%1").arg(v, 16, 16, QChar('0')).toUpper(); }
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
-      memory  (new Memory()),
-      cache   (new Cache(*memory, ReplacementPolicy::LRU)),
+      memory   (new Memory()),
+      cache    (new Cache(*memory, ReplacementPolicy::LRU)),
       assembler(new Assembler(memory)),
-      pipeline(new five_stage_pipeline(*cache)),
-      runTimer(new QTimer(this))
+      pipeline (new five_stage_pipeline(*cache)),
+      runTimer (new QTimer(this)),
+      cycles   (0)
 {
     setWindowTitle("ISA Simulator");
 
-    // ─── Menus ───
+    // ─── Menu Bar ───
     auto *mb = menuBar();
-    auto *file = mb->addMenu("File");
-    file->addAction("Load Program…", this, &MainWindow::actionLoadProgram);
-    file->addAction("Exit", this, &QWidget::close);
+    auto *fileMenu = mb->addMenu("File");
+    fileMenu->addAction("Load Program…", this, &MainWindow::actionLoadProgram);
+    fileMenu->addAction("Exit", this, &QWidget::close);
     mb->addMenu("Help")->addAction("About", [=] {
-        QMessageBox::information(this, "About", "ISA Simulator GUI");
+        QMessageBox::information(this, "About", "ISA Simulator");
     });
 
-    // ─── Layout ───
+    // ─── Main Layout ───
     auto *cw = new QWidget(this);
-    auto *v = new QVBoxLayout(cw);
-    cw->setLayout(v);
+    auto *mainLayout = new QVBoxLayout(cw);
     setCentralWidget(cw);
+    cw->setLayout(mainLayout);
 
-    // Mode checkboxes
-    auto *hMode = new QHBoxLayout;
+    // Mode toggles
+    auto *modeLayout = new QHBoxLayout;
     chkCache    = new QCheckBox("Cache Enable");
     chkPipeline = new QCheckBox("Pipeline Enable");
     chkCache->setChecked(true);
     chkPipeline->setChecked(true);
-    hMode->addWidget(chkCache);
-    hMode->addWidget(chkPipeline);
-    hMode->addStretch();
-    v->addLayout(hMode);
+    modeLayout->addWidget(chkCache);
+    modeLayout->addWidget(chkPipeline);
+    modeLayout->addStretch();
+    mainLayout->addLayout(modeLayout);
 
-    // Cycle count
-    cycleCount = new QLineEdit("0");
+    // Cycle count header + field
+    mainLayout->addWidget(new QLabel("Clock Cycles:", this));
+    cycleCount = new QLineEdit("0", this);
     cycleCount->setReadOnly(true);
-    v->addWidget(cycleCount);
+    mainLayout->addWidget(cycleCount);
 
     // Control buttons
-    auto *hCtl = new QHBoxLayout;
-    btnRun   = new QPushButton("Run");
-    btnHalt  = new QPushButton("Halt");
-    btnStep  = new QPushButton("Step");
-    btnReset = new QPushButton("Reset");
-    hCtl->addWidget(btnRun);
-    hCtl->addWidget(btnHalt);
-    hCtl->addWidget(btnStep);
-    hCtl->addWidget(btnReset);
-    v->addLayout(hCtl);
+    auto *ctl = new QHBoxLayout;
+    btnRun         = new QPushButton("Run", this);
+    btnHalt        = new QPushButton("Halt", this);
+    btnStep        = new QPushButton("Step", this);
+    btnReset       = new QPushButton("Reset", this);
+    btnLoadProgram = new QPushButton("Load Program", this);
+    ctl->addWidget(btnRun);
+    ctl->addWidget(btnHalt);
+    ctl->addWidget(btnStep);
+    ctl->addWidget(btnReset);
+    ctl->addWidget(btnLoadProgram);
+    mainLayout->addLayout(ctl);
 
-    // Load Program button
-    auto *btnLoadProgram = new QPushButton("Load Program");
-    v->addWidget(btnLoadProgram);
-    connect(btnLoadProgram, &QPushButton::clicked, this, &MainWindow::actionLoadProgram);
+    // Tabs: Overview + Pipeline
+    tabWidget = new QTabWidget(this);
+    mainLayout->addWidget(tabWidget);
 
-    // Register table
-    registerTable = new QTableWidget(22, 2, this);
-    registerTable->setHorizontalHeaderLabels({"Register","Value"});
-    QStringList regs = {"PC","IR","SP","BP","RA","SR"};
-    for (int i=0;i<8;++i) regs << QString("GPR[%1]").arg(i);
-    for (int i=0;i<8;++i) regs << QString("FPR[%1]").arg(i);
-    for (int r=0;r<22;++r)
-        registerTable->setItem(r,0,new QTableWidgetItem(regs[r]));
-    registerTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    v->addWidget(registerTable);
-    // Initialize column 1 items to avoid nullptr in refreshGui()
-    for(int r=0; r<registerTable->rowCount(); ++r)
-        registerTable->setItem(r, 1, new QTableWidgetItem(""));
+    // ── Overview Tab ──
+    overviewTab = new QWidget(this);
+    {
+        auto *ov = new QVBoxLayout(overviewTab);
 
-    // Memory table (first 256 rows)
-    memRows = MEMORY_SIZE/16;
-    memoryTable = new QTableWidget(memRows,17,this);
-    QStringList hdr{"Addr"};
-    for(int c=0;c<16;++c) hdr << QString::number(c,16).toUpper();
-    memoryTable->setHorizontalHeaderLabels(hdr);
-    memoryTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    v->addWidget(memoryTable);
-    // Initialize all cells
-    for(int row=0; row<memoryTable->rowCount(); ++row)
-        for(int col=0; col<memoryTable->columnCount(); ++col)
-            memoryTable->setItem(row, col, new QTableWidgetItem(""));
+        // Program listing
+        ov->addWidget(new QLabel("Program", this));
+        programTable = new QTableWidget(0, 2, this);
+        programTable->setHorizontalHeaderLabels({"Addr","Instr"});
+        programTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        programTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        ov->addWidget(programTable);
 
-    // Cache table (one row per set)
-    cacheTable = new QTableWidget(Cache::numSets(),3,this);
-    cacheTable->setHorizontalHeaderLabels({"Set","Tag","Data"});
-    cacheTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    v->addWidget(cacheTable);
-    // Initialize all cells
-    for(int row=0; row<cacheTable->rowCount(); ++row)
-        for(int col=0; col<cacheTable->columnCount(); ++col)
-            cacheTable->setItem(row, col, new QTableWidgetItem(""));
+        // Registers
+        ov->addWidget(new QLabel("Registers", this));
+        registerTable = new QTableWidget(22, 2, this);
+        registerTable->setHorizontalHeaderLabels({"Register","Value"});
+        registerTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        registerTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        // Fill names
+        QStringList regs = {"PC","IR","SP","BP","RA","SR"};
+        for(int i=0;i<8;++i) regs << QString("GPR[%1]").arg(i);
+        for(int i=0;i<8;++i) regs << QString("FPR[%1]").arg(i);
+        for(int r=0;r<22;++r) {
+            registerTable->setItem(r,0,new QTableWidgetItem(regs[r]));
+            registerTable->setItem(r,1,new QTableWidgetItem(""));
+        }
+        ov->addWidget(registerTable);
 
-    // ─── Signals ───
-    connect(btnRun,   &QPushButton::clicked, [=]{ if(!runTimer->isActive()) runTimer->start(0); });
-    connect(btnHalt,  &QPushButton::clicked, [=]{ runTimer->stop(); });
-    connect(btnStep,  &QPushButton::clicked, this, &MainWindow::tickOnce);
-    connect(btnReset, &QPushButton::clicked, [=]{
+        // Memory
+        ov->addWidget(new QLabel("Memory", this));
+        memRows = std::min(MEMORY_SIZE/16, 256);
+        memoryTable = new QTableWidget(memRows, 17, this);
+        QStringList memHdr = {"Addr"};
+        for(int c=0;c<16;++c) memHdr << QString::number(c,16).toUpper();
+        memoryTable->setHorizontalHeaderLabels(memHdr);
+        memoryTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        memoryTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        // create all items
+        for(int r=0;r<memRows;++r)
+            for(int c=0;c<17;++c)
+                memoryTable->setItem(r,c,new QTableWidgetItem(""));
+        ov->addWidget(memoryTable);
+
+        // Cache
+        ov->addWidget(new QLabel("Cache", this));
+        cacheTable = new QTableWidget(Cache::numSets(), 5, this);
+        cacheTable->setHorizontalHeaderLabels({"Set","Tag","Valid","Dirty","Data"});
+        cacheTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        cacheTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        for(int r=0;r<Cache::numSets();++r)
+            for(int c=0;c<5;++c)
+                cacheTable->setItem(r,c,new QTableWidgetItem(""));
+        ov->addWidget(cacheTable);
+
+        tabWidget->addTab(overviewTab, "Overview");
+    }
+
+    // ── Pipeline Tab ──
+    pipelineTab = new QWidget(this);
+    {
+        auto *pl = new QVBoxLayout(pipelineTab);
+        pl->addWidget(new QLabel("Pipeline Stages", this));
+        pipelineTable = new QTableWidget(1,5,this);
+        pipelineTable->setHorizontalHeaderLabels({"IF","ID","EX","MEM","WB"});
+        pipelineTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        pipelineTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        for(int c=0;c<5;++c)
+            pipelineTable->setItem(0,c,new QTableWidgetItem(""));
+        pl->addWidget(pipelineTable);
+        tabWidget->addTab(pipelineTab, "Pipeline");
+    }
+
+    // Fullscreen on start
+    showMaximized();
+
+    // ── Signals ──
+    connect(btnRun,   &QPushButton::clicked, [=](){
+        if (!runTimer->isActive()) runTimer->start(0);
+    });
+    connect(btnHalt,  &QPushButton::clicked, [=](){
         runTimer->stop();
+    });
+    connect(btnStep,  &QPushButton::clicked, this, &MainWindow::tickOnce);
+    connect(btnReset, &QPushButton::clicked, [=](){
+        runTimer->stop();
+        memory->reset();
+        cache->reset();
         delete pipeline;
         pipeline = new five_stage_pipeline(*cache);
         cycles = 0;
         cycleCount->setText("0");
         refreshGui();
     });
-    connect(runTimer, &QTimer::timeout, this, &MainWindow::tickOnce);
+    connect(btnLoadProgram, &QPushButton::clicked, this, &MainWindow::actionLoadProgram);
+    connect(runTimer,       &QTimer::timeout,      this, &MainWindow::tickOnce);
 
+    // Initial display
     refreshGui();
 }
 
@@ -140,9 +199,25 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::actionLoadProgram() {
-    QString fn = QFileDialog::getOpenFileName(this,"Load Program","","Assembly (*.s *.asm)");
-    if(fn.isEmpty()) return;
+    QString fn = QFileDialog::getOpenFileName(this, "Load Program", "", "Assembly (*.s *.asm)");
+    if (fn.isEmpty()) return;
+
+    // reset BEFORE loading so we start with clean memory,
+    // but preserve the loaded instructions in memory
+    memory->reset();
+    cache->reset();
+
     assembler->loadProgram(fn.toStdString());
+    const auto &prog = assembler->getProgram();
+
+    programTable->setRowCount(prog.size());
+    for(int i=0;i<prog.size();++i){
+        programTable->setItem(i,0,new QTableWidgetItem(hex8(i)));
+        programTable->setItem(i,1,new QTableWidgetItem(hex8(prog[i])));
+    }
+
+    // restart pipeline only
+    runTimer->stop();
     delete pipeline;
     pipeline = new five_stage_pipeline(*cache);
     cycles = 0;
@@ -151,16 +226,42 @@ void MainWindow::actionLoadProgram() {
 }
 
 void MainWindow::tickOnce() {
-    if(pipeline->halted) { runTimer->stop(); return; }
     pipeline->clock_cycle();
     ++cycles;
     cycleCount->setText(QString::number(cycles));
     refreshGui();
+
+    // auto-stop after HALT drains
+    if (pipeline->halted
+     && !(pipeline->if_valid||pipeline->id_valid
+       ||pipeline->ex_valid||pipeline->mem_valid
+       ||pipeline->wb_valid)) {
+        runTimer->stop();
+    }
 }
 
 void MainWindow::refreshGui() {
+    // Pipeline registers
+    QStringList insts = {
+        hex8(pipeline->ifr.instruction),
+        hex8(pipeline->idr.instruction),
+        hex8(pipeline->exr.instruction),
+        hex8(pipeline->memr.instruction),
+        hex8(pipeline->wbr.instruction)
+    };
+    bool valid[5] = {
+        pipeline->if_valid,
+        pipeline->id_valid,
+        pipeline->ex_valid,
+        pipeline->mem_valid,
+        pipeline->wb_valid
+    };
+    for(int c=0;c<5;++c)
+        pipelineTable->item(0,c)
+                     ->setText(valid[c] ? insts[c] : QString());
+
     // Registers
-    auto &R = pipeline->registers;
+    auto &R = pipeline->regs;
     QString vals[22] = {
         hex8(R.PC), hex8(R.IR), hex8(R.SP), hex8(R.BP),
         hex8(R.RA), hex8(R.SR),
@@ -174,30 +275,43 @@ void MainWindow::refreshGui() {
     for(int r=0;r<22;++r)
         registerTable->item(r,1)->setText(vals[r]);
 
-    // Memory
-    for(int row=0;row<memRows;++row){
+    // Memory view (with centered text!)
+    for(int row=0; row<memRows; ++row) {
         uint32_t base = row*16;
-        memoryTable->item(row,0)->setText(hex4(base));
-        for(int col=0;col<16;++col){
-            uint8_t b = static_cast<uint8_t>(memory->read_data(base+col)&0xFF);
-            memoryTable->item(row,col+1)->setText(hex2(b));
+        auto *addrItem = memoryTable->item(row, 0);
+        addrItem->setText(hex4(base));
+        addrItem->setTextAlignment(Qt::AlignCenter);
+
+        for(int col=0; col<16; ++col) {
+            uint8_t b = static_cast<uint8_t>(memory->read_data(base+col) & 0xFF);
+            auto *it = memoryTable->item(row, col+1);
+            it->setText(hex2(b));
+            it->setTextAlignment(Qt::AlignCenter);
         }
     }
     memoryTable->resizeColumnsToContents();
 
-    // Cache
+    // Cache view
     int sets = Cache::numSets();
     cacheTable->setRowCount(sets);
-    for(int s=0;s<sets;++s){
+    for(int s=0; s<sets; ++s){
         cacheTable->item(s,0)->setText(QString::number(s));
-        const auto &cs = cache->getSet(s);
-        QString tag = cs[0].valid ?
-            QString::number(cs[0].tag,16).toUpper() : "-";
-        cacheTable->item(s,1)->setText(tag);
+        cacheTable->item(s,0)->setTextAlignment(Qt::AlignCenter);
 
-        QStringList elems;
-        for(auto datum: cs[0].data)
-            elems << QString::number(mem_dtype_to_int(datum));
-        cacheTable->item(s,2)->setText(elems.join(","));
+        const auto &line = cache->getSet(s)[0];
+        cacheTable->item(s,1)->setText(QString::number(line.tag,16).toUpper());
+        cacheTable->item(s,1)->setTextAlignment(Qt::AlignCenter);
+
+        cacheTable->item(s,2)->setText(line.valid ? "1":"0");
+        cacheTable->item(s,2)->setTextAlignment(Qt::AlignCenter);
+
+        cacheTable->item(s,3)->setText(line.dirty ? "1":"0");
+        cacheTable->item(s,3)->setTextAlignment(Qt::AlignCenter);
+
+        QStringList data;
+        for(auto d: line.data)
+            data << QString::number(mem_dtype_to_int(d));
+        cacheTable->item(s,4)->setText(data.join(","));
+        cacheTable->item(s,4)->setTextAlignment(Qt::AlignCenter);
     }
 }
