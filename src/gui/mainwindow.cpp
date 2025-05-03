@@ -24,9 +24,9 @@
 #include "pipeline/five_stage_pipeline.h"
 
 // Helpers to format hex in the tables
-static inline QString hex2(uint8_t v)  { return QString("%1").arg(v, 2, 16, QChar('0')).toUpper(); }
-static inline QString hex4(uint32_t v) { return QString("%1").arg(v, 4, 16, QChar('0')).toUpper(); }
-static inline QString hex8(uint64_t v) { return QString("0x%1").arg(v, 16, 16, QChar('0')).toUpper(); }
+static inline QString hex2(uint8_t v)  { return QString("%1").arg(v, 2, 16, QChar('0')); }
+static inline QString hex4(uint32_t v) { return QString("%1").arg(v, 4, 16, QChar('0')); }
+static inline QString hex8(uint64_t v) { return QString("0x%1").arg(v, 16, 16, QChar('0')); }
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -132,7 +132,6 @@ MainWindow::MainWindow(QWidget *parent)
         for(int c=0;c<16;++c) memHdr << QString::number(c,16).toUpper();
         memoryTable->setHorizontalHeaderLabels(memHdr);
         memoryTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-        memoryTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         // create all items
         for(int r=0;r<memRows;++r)
             for(int c=0;c<17;++c)
@@ -289,9 +288,9 @@ void MainWindow::refreshGui() {
         addrItem->setTextAlignment(Qt::AlignCenter);
 
         for(int col=0; col<16; ++col) {
-            uint8_t b = static_cast<uint8_t>(memory->read_data(base+col) & 0xFF);
+            uint64_t b = memory->read_data(base+col);
             auto *it = memoryTable->item(row, col+1);
-            it->setText(hex2(b));
+            it->setText(hex8(b));
             it->setTextAlignment(Qt::AlignCenter);
         }
     }
