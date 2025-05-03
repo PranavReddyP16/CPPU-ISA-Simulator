@@ -6,6 +6,7 @@
 Cache::Cache(Memory &main_memory, ReplacementPolicy rp)
   : main_memory(main_memory), replacement_policy(rp)
 {
+    enabled = true;
     reset();
 }
 
@@ -79,6 +80,9 @@ void Cache::evict_and_replace_cache_line(int set_index, int start_addr) {
 }
 
 MemoryDataType Cache::read_data(int address) {
+    if (!enabled)
+        return main_memory.read_data(address);
+
     int set_index = extract_index(address);
     int tag       = extract_tag(address);
     int offset    = extract_offset(address);
@@ -98,6 +102,9 @@ MemoryDataType Cache::read_data(int address) {
 }
 
 void Cache::write_data(int address, MemoryDataType value) {
+    if (!enabled)
+        return main_memory.write_data(address, value);
+
     int set_index = extract_index(address);
     int tag       = extract_tag(address);
     int offset    = extract_offset(address);

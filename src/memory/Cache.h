@@ -16,6 +16,8 @@ public:
     const CacheSet& getSet(int index) const { return cache_sets[index]; }
     static int numSets() { return CACHE_NUM_SETS; }
 
+    bool enabled;
+
 private:
     Memory &main_memory;
     ReplacementPolicy replacement_policy;

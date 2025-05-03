@@ -60,6 +60,12 @@ MainWindow::MainWindow(QWidget *parent)
     chkPipeline = new QCheckBox("Pipeline Enable");
     chkCache->setChecked(true);
     chkPipeline->setChecked(true);
+    connect(chkCache, &QCheckBox::stateChanged, [this](int state) {
+        if (state == Qt::Checked)
+            cache->enabled = true;
+        else
+            cache->enabled = false;
+    });
     modeLayout->addWidget(chkCache);
     modeLayout->addWidget(chkPipeline);
     modeLayout->addStretch();
