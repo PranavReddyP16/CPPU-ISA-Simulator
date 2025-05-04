@@ -49,6 +49,7 @@ private:
     five_stage_pipeline  *pipeline;
 
     QTimer               *runTimer;
+    bool                  breakpoints[MEMORY_SIZE];
     int                   cycles = 0;
     int                   memRows = 0;
 };

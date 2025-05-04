@@ -1,5 +1,4 @@
 #include "mainwindow.h"
-#include <QDebug>
 
 #include <QMenuBar>
 #include <QMenu>
@@ -116,8 +115,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Program listing
     mainLayout->addWidget(new QLabel("Program", this));
-    programTable = new QTableWidget(0, 4, this);
-    programTable->setHorizontalHeaderLabels({"Addr","Encoded","Instruction", "Pipeline Stage"});
+    programTable = new QTableWidget(0, 5, this);
+    programTable->setHorizontalHeaderLabels({"", "Addr","Encoded","Instruction", "Pipeline Stage"});
     programTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     programTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     mainLayout->addWidget(programTable);
@@ -168,6 +167,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // ── Signals ──
     connect(btnRun,   &QPushButton::clicked, [=](){
+        pipeline->halted = false;
         if (!runTimer->isActive()) runTimer->start();
     });
     connect(btnHalt,  &QPushButton::clicked, [=](){
@@ -185,6 +185,8 @@ MainWindow::MainWindow(QWidget *parent)
         pipeline = new five_stage_pipeline(*cache);
         cycles = 0;
         cycleCount->setText("0");
+        for (int i = 0; i < MEMORY_SIZE; ++i)
+            breakpoints[i] = false;
         refreshGui();
     });
     connect(btnLoadProgram, &QPushButton::clicked, this, &MainWindow::actionLoadProgram);
@@ -217,6 +219,10 @@ void MainWindow::actionLoadProgram() {
     // but preserve the loaded instructions in memory
     memory->reset();
     cache->reset();
+    assembler->reset();
+    programTable->clearContents();
+    for (int i = 0; i < MEMORY_SIZE; ++i)
+        breakpoints[i] = false;
 
     assembler->loadProgram(fn.toStdString());
     const auto &prog = assembler->getProgram();
@@ -225,10 +231,21 @@ void MainWindow::actionLoadProgram() {
     programTable->setRowCount(prog.size());
     for(int i=0;i<prog.size();++i){
         if (prog[i].encoded.has_value()) {
-            programTable->setItem(i,0, new QTableWidgetItem(hex4(addr++)));
-            programTable->setItem(i,1, new QTableWidgetItem(hex8(prog[i].encoded.value())));
+            auto *breakpointChk = new QCheckBox(this);
+            programTable->setCellWidget(i,0, breakpointChk);
+            connect(breakpointChk, &QCheckBox::stateChanged, [=](int state) {
+                if (state == Qt::Checked)
+                    breakpoints[addr] = true;
+                else
+                    breakpoints[addr] = false;
+                std::cout << breakpoints[addr] << std::endl;
+                std::cout << "&breakpoints in lambda: " << &breakpoints[addr] << std::endl;
+            });
+
+            programTable->setItem(i,1, new QTableWidgetItem(hex4(addr++)));
+            programTable->setItem(i,2, new QTableWidgetItem(hex8(prog[i].encoded.value())));
         }
-        programTable->setItem(i,2, new QTableWidgetItem(prog[i].instrxnStr.c_str()));
+        programTable->setItem(i,3, new QTableWidgetItem(prog[i].instrxnStr.c_str()));
     }
 
     // restart pipeline only
@@ -241,6 +258,9 @@ void MainWindow::actionLoadProgram() {
 }
 
 void MainWindow::tickOnce() {
+    if (breakpoints[pipeline->regs.PC])
+        runTimer->stop();
+
     pipeline->clock_cycle();
     ++cycles;
     cycleCount->setText(QString::number(cycles));
@@ -256,6 +276,9 @@ void MainWindow::tickOnce() {
 }
 
 void MainWindow::refreshGui() {
+    // Cycle count 
+    cycleCount->setText(QString::number(cycles));
+
     // Pipeline registers
     QStringList insts = {
         hex8(pipeline->ifr.instruction),
@@ -276,7 +299,7 @@ void MainWindow::refreshGui() {
 
     // Program Table
     for (int i = 0; i < programTable->rowCount(); ++i) {
-        auto *addrItem = programTable->item(i, 0);
+        auto *addrItem = programTable->item(i, 1);
         if (!addrItem) continue;
 
         uint32_t addr = addrItem->text().toUInt(nullptr, 16); // Convert address to integer
@@ -290,10 +313,10 @@ void MainWindow::refreshGui() {
         else if (valid[4] && addr == pipeline->wbr.PC) stage = "WB";
 
         // Update the Pipeline Stage column
-        auto *stageItem = programTable->item(i, 3);
+        auto *stageItem = programTable->item(i, 4);
         if (!stageItem) {
             stageItem = new QTableWidgetItem();
-            programTable->setItem(i, 3, stageItem);
+            programTable->setItem(i, 4, stageItem);
         }
         stageItem->setText(stage);
     }
