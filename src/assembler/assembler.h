@@ -20,6 +20,7 @@ public:
 
     // Load, assemble & write into memory.  Afterwards getProgram()
     // returns the vector of 64-bit instruction words.
+    void reset() { instrxnEntries.clear(); };
     void loadProgram(const std::string &filename);
     const std::vector<InstrxnEntry>& getProgram() const { return instrxnEntries; }
 

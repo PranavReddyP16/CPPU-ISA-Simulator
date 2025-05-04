@@ -26,10 +26,6 @@ private slots:
     void refreshGui();
 
 private:
-    QTabWidget           *tabWidget;
-    QWidget              *overviewTab;
-    QWidget              *pipelineTab;
-
     QCheckBox            *chkCache;
     QCheckBox            *chkPipeline;
 
