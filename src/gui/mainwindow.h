@@ -36,6 +36,7 @@ private:
     QPushButton          *btnLoadProgram;
 
     QLineEdit            *cycleCount;
+    QLineEdit            *clockSpeed;
 
     QTableWidget         *programTable;
     QTableWidget         *pipelineTable;

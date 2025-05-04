@@ -68,78 +68,90 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(chkPipeline, &QCheckBox::stateChanged, [this](int state) {
         if (state == Qt::Checked)
-            return;
+            pipeline->enabled = true;
         else
-            return;
-    }); // TODO: implement pipeline disable
+            pipeline->enabled = false;
+    });
     modeLayout->addWidget(chkCache);
     modeLayout->addWidget(chkPipeline);
     modeLayout->addStretch();
     mainLayout->addLayout(modeLayout);
 
-    // Cycle count header + field
-    mainLayout->addWidget(new QLabel("Clock Cycles:", this));
-    cycleCount = new QLineEdit("0", this);
-    cycleCount->setReadOnly(true);
-    mainLayout->addWidget(cycleCount);
+    auto *cyclesLayout = new QHBoxLayout; {
+        // Cycle count header + field
+        cyclesLayout->addWidget(new QLabel("Clock Cycles:", this));
+        cycleCount = new QLineEdit("0", this);
+        cycleCount->setReadOnly(true);
+        cyclesLayout->addWidget(cycleCount);
 
-    // Clock speed
-    mainLayout->addWidget(new QLabel("Clock Speed (Hz):", this));
-    QLineEdit *clockSpeed = new QLineEdit("0", this);
-    mainLayout->addWidget(clockSpeed);
+        // Clock speed
+        cyclesLayout->addWidget(new QLabel("Clock Speed (Hz):", this));
+        clockSpeed = new QLineEdit("0", this);
+        cyclesLayout->addWidget(clockSpeed);
+    } mainLayout->addLayout(cyclesLayout);
 
-    // Control buttons
-    auto *ctl = new QHBoxLayout;
-    btnRun         = new QPushButton("Run", this);
-    btnHalt        = new QPushButton("Halt", this);
-    btnStep        = new QPushButton("Step", this);
-    btnReset       = new QPushButton("Reset", this);
-    btnLoadProgram = new QPushButton("Load Program", this);
-    ctl->addWidget(btnRun);
-    ctl->addWidget(btnHalt);
-    ctl->addWidget(btnStep);
-    ctl->addWidget(btnReset);
-    ctl->addWidget(btnLoadProgram);
-    mainLayout->addLayout(ctl);
+    auto *programAndRegistersLayout = new QHBoxLayout; {
 
-    // Pipeline stages
-    mainLayout->addWidget(new QLabel("Pipeline Stages", this));
-    pipelineTable = new QTableWidget(1,5,this);
-    pipelineTable->setHorizontalHeaderLabels({"IF","ID","EX","MEM","WB"});
-    pipelineTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    pipelineTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    pipelineTable->setFixedHeight(pipelineTable->rowHeight(0) + pipelineTable->horizontalHeader()->height());
-    for(int c=0;c<5;++c)
-        pipelineTable->setItem(0,c,new QTableWidgetItem(""));
-    mainLayout->addWidget(pipelineTable);
+        auto *registerLayout = new QVBoxLayout; {
+            // Registers
+            registerLayout->addWidget(new QLabel("Registers", this));
+            registerTable = new QTableWidget(22, 2, this);
+            registerTable->setHorizontalHeaderLabels({"Register","Value"});
+            registerTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+            registerTable->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+            registerTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+            // Fill names
+            QStringList regs = {"PC","IR","SP","BP","RA","SR"};
+            for(int i=0;i<8;++i) regs << QString("GPR[%1]").arg(i);
+            for(int i=0;i<8;++i) regs << QString("FPR[%1]").arg(i);
+            for(int r=0;r<22;++r) {
+                registerTable->setItem(r,0,new QTableWidgetItem(regs[r]));
+                registerTable->setItem(r,1,new QTableWidgetItem(""));
+            }
+            registerLayout->addWidget(registerTable);
+        } programAndRegistersLayout->addLayout(registerLayout);
 
-    // Program listing
-    mainLayout->addWidget(new QLabel("Program", this));
-    programTable = new QTableWidget(0, 5, this);
-    programTable->setHorizontalHeaderLabels({"", "Addr","Encoded","Instruction", "Pipeline Stage"});
-    programTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    programTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    programTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    programTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    programTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
-    programTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
-    mainLayout->addWidget(programTable);
+        auto *programLayout = new QVBoxLayout; {
+            programLayout->addWidget(new QLabel("Program", this));
 
-    // Registers
-    mainLayout->addWidget(new QLabel("Registers", this));
-    registerTable = new QTableWidget(22, 2, this);
-    registerTable->setHorizontalHeaderLabels({"Register","Value"});
-    registerTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    registerTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    // Fill names
-    QStringList regs = {"PC","IR","SP","BP","RA","SR"};
-    for(int i=0;i<8;++i) regs << QString("GPR[%1]").arg(i);
-    for(int i=0;i<8;++i) regs << QString("FPR[%1]").arg(i);
-    for(int r=0;r<22;++r) {
-        registerTable->setItem(r,0,new QTableWidgetItem(regs[r]));
-        registerTable->setItem(r,1,new QTableWidgetItem(""));
-    }
-    mainLayout->addWidget(registerTable);
+            // Control buttons
+            auto *ctl = new QHBoxLayout;
+            btnRun         = new QPushButton("Run", this);
+            btnHalt        = new QPushButton("Halt", this);
+            btnStep        = new QPushButton("Step", this);
+            btnReset       = new QPushButton("Reset", this);
+            btnLoadProgram = new QPushButton("Load Program", this);
+            ctl->addWidget(btnRun);
+            ctl->addWidget(btnHalt);
+            ctl->addWidget(btnStep);
+            ctl->addWidget(btnReset);
+            ctl->addWidget(btnLoadProgram);
+            programLayout->addLayout(ctl);
+
+            // Pipeline stages
+            pipelineTable = new QTableWidget(1,5,this);
+            pipelineTable->setHorizontalHeaderLabels({"IF","ID","EX","MEM","WB"});
+            pipelineTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+            pipelineTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+            pipelineTable->setFixedHeight(pipelineTable->rowHeight(0) + pipelineTable->horizontalHeader()->height());
+            for(int c=0;c<5;++c)
+                pipelineTable->setItem(0,c,new QTableWidgetItem(""));
+            programLayout->addWidget(pipelineTable);
+
+            // Program listing
+            // programLayout->addWidget(new QLabel("Program", this));
+            programTable = new QTableWidget(0, 5, this);
+            programTable->setHorizontalHeaderLabels({"", "Addr","Encoded","Instruction", "Pipeline Stage"});
+            programTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+            programTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+            programTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+            programTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+            programTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
+            programTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
+            programLayout->addWidget(programTable);
+        } programAndRegistersLayout->addLayout(programLayout);
+
+    } mainLayout->addLayout(programAndRegistersLayout);
 
     // Memory
     mainLayout->addWidget(new QLabel("Memory", this));
@@ -153,6 +165,7 @@ MainWindow::MainWindow(QWidget *parent)
     for(int r=0;r<memRows;++r)
         for(int c=0;c<17;++c)
             memoryTable->setItem(r,c,new QTableWidgetItem(""));
+
     mainLayout->addWidget(memoryTable);
 
     // Cache
@@ -160,7 +173,8 @@ MainWindow::MainWindow(QWidget *parent)
     cacheTable = new QTableWidget(Cache::numSets(), 5, this);
     cacheTable->setHorizontalHeaderLabels({"Set","Tag","Valid","Dirty","Data"});
     cacheTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    cacheTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    cacheTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    cacheTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     for(int r=0;r<Cache::numSets();++r)
         for(int c=0;c<5;++c)
             cacheTable->setItem(r,c,new QTableWidgetItem(""));

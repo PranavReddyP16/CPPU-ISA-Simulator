@@ -54,8 +54,10 @@ public:
     Register        regs;      // PC, IR, GPRs, etc.
     Cache&          cache;     // reference
 
-    pipeline_reg    ifr, idr, exr, memr, wbr;
     bool            halted    = false;
+    bool            enabled   = true;
+    
+    pipeline_reg    ifr, idr, exr, memr, wbr;
     bool            if_valid  = false;
     bool            id_valid  = false;
     bool            ex_valid  = false;
