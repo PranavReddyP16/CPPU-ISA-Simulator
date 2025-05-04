@@ -118,7 +118,11 @@ MainWindow::MainWindow(QWidget *parent)
     programTable = new QTableWidget(0, 5, this);
     programTable->setHorizontalHeaderLabels({"", "Addr","Encoded","Instruction", "Pipeline Stage"});
     programTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    programTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    programTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    programTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    programTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    programTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
+    programTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     mainLayout->addWidget(programTable);
 
     // Registers
@@ -238,14 +242,15 @@ void MainWindow::actionLoadProgram() {
                     breakpoints[addr] = true;
                 else
                     breakpoints[addr] = false;
-                std::cout << breakpoints[addr] << std::endl;
-                std::cout << "&breakpoints in lambda: " << &breakpoints[addr] << std::endl;
             });
 
             programTable->setItem(i,1, new QTableWidgetItem(hex4(addr++)));
             programTable->setItem(i,2, new QTableWidgetItem(hex8(prog[i].encoded.value())));
         }
-        programTable->setItem(i,3, new QTableWidgetItem(prog[i].instrxnStr.c_str()));
+
+        auto *instrxnItem = new QTableWidgetItem(prog[i].instrxnStr.c_str());
+        instrxnItem->setFont(QFont("Courier New"));
+        programTable->setItem(i,3, instrxnItem);
     }
 
     // restart pipeline only
