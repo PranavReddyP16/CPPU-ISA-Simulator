@@ -1,3 +1,4 @@
+
 #include "five_stage_pipeline.h"
 #include "instruction_helpers.h"
 #include "memory/utils.h"
@@ -10,11 +11,12 @@ five_stage_pipeline::five_stage_pipeline(Cache &c)
   : cache(c)
 {
     regs.reset();
+    halted = false;
+    if_valid = id_valid = ex_valid = mem_valid = wb_valid = false;
 }
 
 void five_stage_pipeline::fetch() {
-    if (halted) { if_valid=false; return; }
-    if (!enabled) wb_valid=false; 
+    // if (halted) { if_valid=false; return; }
 
     uint64_t inst = cache.read_data(regs.PC);
     ifr.instruction = inst;
@@ -28,8 +30,8 @@ void five_stage_pipeline::fetch() {
 
 /* ─── decode ───────────────────────────────────────────── */
 void five_stage_pipeline::decode() {
-    if (!if_valid) { id_valid=false; return; }
-    idr = ifr; id_valid = true; if (!enabled) if_valid=false;
+    // if (!if_valid) { id_valid=false; return; }
+    // idr = ifr; id_valid = true;
 
     uint64_t inst = idr.instruction;
     int opc       = idr.opcode;
@@ -55,12 +57,14 @@ void five_stage_pipeline::decode() {
 
 /* ─── execute ──────────────────────────────────────────── */
 void five_stage_pipeline::execute() {
-    if (!id_valid){ ex_valid=false; return; }
-    exr = idr; ex_valid=true; if (!enabled) id_valid=false;
+    // if (!id_valid){ ex_valid=false; return; }
+    // exr = idr; ex_valid=true;
 
     int opc = exr.opcode;
-
-    if (opc == OP::LI_OP) {
+    if(opc == OP::HLT_OP){
+        //Stall
+    }
+    else if (opc == OP::LI_OP) {
         exr.write_data = exr.imm;
         exr.reg_write  = true;
     }
@@ -84,8 +88,8 @@ void five_stage_pipeline::execute() {
 
 /* ─── memory ───────────────────────────────────────────── */
 void five_stage_pipeline::mem_stage() {
-    if (!ex_valid){ mem_valid=false; return; }
-    memr = exr; mem_valid=true; if (!enabled) ex_valid=false;
+    // if (!ex_valid){ mem_valid=false; return; }
+    // memr = exr; mem_valid=true;
 
     int opc = memr.opcode;
     if (opc == OP::ILOAD_OP) {
@@ -103,7 +107,7 @@ void five_stage_pipeline::mem_stage() {
 /* ─── write back ──────────────────────────────────────── */
 void five_stage_pipeline::writeback() {
     if (!mem_valid){ wb_valid=false; return; }
-    wbr = memr; wb_valid=true; if (!enabled) mem_valid=false;
+    wbr = memr; wb_valid=true;
 
     if (wbr.reg_write && wbr.rd < 8) {
         regs.write_register(wbr.rd, wbr.write_data);
@@ -114,23 +118,51 @@ void five_stage_pipeline::writeback() {
 
 /* ─── one clock ───────────────────────────────────────── */
 void five_stage_pipeline::clock_cycle() {
-    if (enabled) {
-        writeback();
-        mem_stage();
-        execute();
-        decode();
-        fetch();
+    // writeback();
+    // mem_stage();
+    // execute();
+    // decode();
+    // fetch();
+    if (wb_valid) writeback();
+    if (mem_valid) mem_stage();
+    if (ex_valid) execute();
+    if (id_valid) decode();
+    if (!halted) fetch();
+
+
+    bool hazard = false;
+
+    if (exr.opcode!=OP::HLT_OP && ( (idr.rs1 == exr.rd && exr.rd != 0) || (idr.rs2 == exr.rd && exr.rd != 0) ))
+        hazard = true;
+    if (memr.opcode!=OP::HLT_OP && ( (idr.rs1 == memr.rd && memr.rd != 0) || (idr.rs2 == memr.rd && memr.rd != 0) ))
+        hazard = true;
+    if (hazard) {
+        wb_valid  = mem_valid;
+        mem_valid = ex_valid;
+        ex_valid  = false;     
     } else {
-        std::cout << "TERI MAA" << std::endl;
-        if (mem_valid) writeback();
-        else if (ex_valid) mem_stage();
-        else if (id_valid) execute();
-        else if (if_valid) decode();
-        else if (!halted) fetch();
+        wb_valid  = mem_valid;
+        mem_valid = ex_valid;
+        ex_valid  = id_valid;
+        id_valid  = if_valid;
+        if_valid  = !halted;
+    }
+
+    if (hazard) {
+        std::cout<<"HAZARD"<<std::endl;
+        wbr = memr;
+        memr = exr;
+        exr.opcode =0b100010;
+    } 
+    else {
+        std::cout<<"NO HAZARD"<<std::endl;
+        wbr = memr;
+        memr = exr;
+        exr = idr;
+        idr = ifr;
     }
 }
 
-/* run to completion (used by unit tests) */
 void five_stage_pipeline::run_pipeline() {
     while(!(halted && !if_valid&& !id_valid&& !ex_valid&& !mem_valid&& !wb_valid))
         clock_cycle();
