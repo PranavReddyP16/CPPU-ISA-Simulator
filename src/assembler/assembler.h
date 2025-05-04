@@ -4,9 +4,14 @@
 #include <unordered_map>
 #include <cstdint>
 #include <vector>
+#include <optional>
 
 class Memory;
-class MainWindow;
+
+struct InstrxnEntry {
+    std::string instrxnStr;
+    std::optional<uint64_t> encoded;
+};
 
 class Assembler {
 public:
@@ -16,7 +21,7 @@ public:
     // Load, assemble & write into memory.  Afterwards getProgram()
     // returns the vector of 64-bit instruction words.
     void loadProgram(const std::string &filename);
-    const std::vector<uint64_t>& getProgram() const { return assembledProgram; }
+    const std::vector<InstrxnEntry>& getProgram() const { return instrxnEntries; }
 
 private:
     // Expanded opcode map (includes LI)
@@ -43,9 +48,7 @@ private:
     };
 
     Memory*                    mem;
-    MainWindow*                mainWindow = nullptr;
-    std::vector<uint64_t>      assembledProgram;
+    std::vector<InstrxnEntry>  instrxnEntries;
 
     uint64_t assembleInstrxn(const std::string &line);
-    void     writeProgramToMemory();
 };

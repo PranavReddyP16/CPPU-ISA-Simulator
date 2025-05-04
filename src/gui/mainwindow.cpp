@@ -102,8 +102,8 @@ MainWindow::MainWindow(QWidget *parent)
 
         // Program listing
         ov->addWidget(new QLabel("Program", this));
-        programTable = new QTableWidget(0, 2, this);
-        programTable->setHorizontalHeaderLabels({"Addr","Instr"});
+        programTable = new QTableWidget(0, 3, this);
+        programTable->setHorizontalHeaderLabels({"Addr","Encoded","Instruction"});
         programTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
         programTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         ov->addWidget(programTable);
@@ -215,10 +215,14 @@ void MainWindow::actionLoadProgram() {
     assembler->loadProgram(fn.toStdString());
     const auto &prog = assembler->getProgram();
 
+    int addr = 0;
     programTable->setRowCount(prog.size());
     for(int i=0;i<prog.size();++i){
-        programTable->setItem(i,0,new QTableWidgetItem(hex8(i)));
-        programTable->setItem(i,1,new QTableWidgetItem(hex8(prog[i])));
+        if (prog[i].encoded.has_value()) {
+            programTable->setItem(i,0, new QTableWidgetItem(hex4(addr++)));
+            programTable->setItem(i,1, new QTableWidgetItem(hex8(prog[i].encoded.value())));
+        }
+        programTable->setItem(i,2, new QTableWidgetItem(prog[i].instrxnStr.c_str()));
     }
 
     // restart pipeline only

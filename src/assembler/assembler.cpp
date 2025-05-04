@@ -98,15 +98,19 @@ void Assembler::loadProgram(const std::string &file)
     std::ifstream f(file);
     if (!f) throw std::runtime_error("Cannot open "+file);
 
-    assembledProgram.clear();
+    instrxnEntries.clear();
     std::string ln;
     while (std::getline(f,ln))
     {
-        if (ln.empty()||ln[0]==';'||ln[0]=='#') continue;
-        assembledProgram.push_back(assembleInstrxn(ln));
+        if (ln.empty()||ln[0]==';'||ln[0]=='#') 
+            instrxnEntries.push_back({ln, std::nullopt});
+        else 
+            instrxnEntries.push_back({ln, assembleInstrxn(ln)});
     }
     f.close();
 
-    for (size_t i=0;i<assembledProgram.size();++i)
-        mem->write_data(i, assembledProgram[i]);
+    int addr = 0;
+    for (size_t i=0;i<instrxnEntries.size();++i)
+        if (instrxnEntries[i].encoded.has_value())
+            mem->write_data(addr++, instrxnEntries[i].encoded.value());
 }
