@@ -15,7 +15,7 @@ five_stage_pipeline::five_stage_pipeline(Cache &c)
 }
 
 void five_stage_pipeline::fetch() {
-    if (halted) { if_valid=false; return; }
+    // if (halted) { if_valid=false; return; }
 
     uint64_t inst = cache.read_data(regs.PC);
     ifr.instruction = inst;
@@ -29,8 +29,8 @@ void five_stage_pipeline::fetch() {
 
 /* ─── decode ───────────────────────────────────────────── */
 void five_stage_pipeline::decode() {
-    if (!if_valid) { id_valid=false; return; }
-    idr = ifr; id_valid = true;
+    // if (!if_valid) { id_valid=false; return; }
+    // idr = ifr; id_valid = true;
 
     uint64_t inst = idr.instruction;
     int opc       = idr.opcode;
@@ -56,12 +56,14 @@ void five_stage_pipeline::decode() {
 
 /* ─── execute ──────────────────────────────────────────── */
 void five_stage_pipeline::execute() {
-    if (!id_valid){ ex_valid=false; return; }
-    exr = idr; ex_valid=true;
+    // if (!id_valid){ ex_valid=false; return; }
+    // exr = idr; ex_valid=true;
 
     int opc = exr.opcode;
-
-    if (opc == OP::LI_OP) {
+    if(opc == OP::HLT_OP){
+        //Stall
+    }
+    else if (opc == OP::LI_OP) {
         exr.write_data = exr.imm;
         exr.reg_write  = true;
     }
@@ -85,8 +87,8 @@ void five_stage_pipeline::execute() {
 
 /* ─── memory ───────────────────────────────────────────── */
 void five_stage_pipeline::mem_stage() {
-    if (!ex_valid){ mem_valid=false; return; }
-    memr = exr; mem_valid=true;
+    // if (!ex_valid){ mem_valid=false; return; }
+    // memr = exr; mem_valid=true;
 
     int opc = memr.opcode;
     if (opc == OP::ILOAD_OP) {
@@ -115,14 +117,51 @@ void five_stage_pipeline::writeback() {
 
 /* ─── one clock ───────────────────────────────────────── */
 void five_stage_pipeline::clock_cycle() {
-    writeback();
-    mem_stage();
-    execute();
-    decode();
-    fetch();
+    // writeback();
+    // mem_stage();
+    // execute();
+    // decode();
+    // fetch();
+    if (wb_valid) writeback();
+    if (mem_valid) mem_stage();
+    if (ex_valid) execute();
+    if (id_valid) decode();
+    if (!halted) fetch();
+
+
+    bool hazard = false;
+
+    if (exr.opcode!=OP::HLT_OP && ( (idr.rs1 == exr.rd && exr.rd != 0) || (idr.rs2 == exr.rd && exr.rd != 0) ))
+        hazard = true;
+    if (memr.opcode!=OP::HLT_OP && ( (idr.rs1 == memr.rd && memr.rd != 0) || (idr.rs2 == memr.rd && memr.rd != 0) ))
+        hazard = true;
+    if (hazard) {
+        wb_valid  = mem_valid;
+        mem_valid = ex_valid;
+        ex_valid  = false;     
+    } else {
+        wb_valid  = mem_valid;
+        mem_valid = ex_valid;
+        ex_valid  = id_valid;
+        id_valid  = if_valid;
+        if_valid  = !halted;
+    }
+
+    if (hazard) {
+        std::cout<<"HAZARD"<<std::endl;
+        wbr = memr;
+        memr = exr;
+        exr.opcode =0b100010;
+    } 
+    else {
+        std::cout<<"NO HAZARD"<<std::endl;
+        wbr = memr;
+        memr = exr;
+        exr = idr;
+        idr = ifr;
+    }
 }
 
-/* run to completion (used by unit tests) */
 void five_stage_pipeline::run_pipeline() {
     while(!(halted && !if_valid&& !id_valid&& !ex_valid&& !mem_valid&& !wb_valid))
         clock_cycle();
