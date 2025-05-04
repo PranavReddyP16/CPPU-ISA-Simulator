@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include <QDebug>
 
 #include <QMenuBar>
 #include <QMenu>
@@ -66,6 +67,12 @@ MainWindow::MainWindow(QWidget *parent)
         else
             cache->enabled = false;
     });
+    connect(chkPipeline, &QCheckBox::stateChanged, [this](int state) {
+        if (state == Qt::Checked)
+            return;
+        else
+            return;
+    }); // TODO: implement pipeline disable
     modeLayout->addWidget(chkCache);
     modeLayout->addWidget(chkPipeline);
     modeLayout->addStretch();
@@ -76,6 +83,11 @@ MainWindow::MainWindow(QWidget *parent)
     cycleCount = new QLineEdit("0", this);
     cycleCount->setReadOnly(true);
     mainLayout->addWidget(cycleCount);
+
+    // Clock speed
+    mainLayout->addWidget(new QLabel("Clock Speed (Hz):", this));
+    QLineEdit *clockSpeed = new QLineEdit("0", this);
+    mainLayout->addWidget(clockSpeed);
 
     // Control buttons
     auto *ctl = new QHBoxLayout;
@@ -156,7 +168,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // ── Signals ──
     connect(btnRun,   &QPushButton::clicked, [=](){
-        if (!runTimer->isActive()) runTimer->start(0);
+        if (!runTimer->isActive()) runTimer->start();
     });
     connect(btnHalt,  &QPushButton::clicked, [=](){
         runTimer->stop();
@@ -176,6 +188,13 @@ MainWindow::MainWindow(QWidget *parent)
         refreshGui();
     });
     connect(btnLoadProgram, &QPushButton::clicked, this, &MainWindow::actionLoadProgram);
+    connect(clockSpeed, &QLineEdit::textChanged, [=](const QString &text) {
+        bool ok;    int speed = text.toInt(&ok);
+        if (ok && speed > 0)
+            runTimer->setInterval(1000/speed);
+        if (ok && speed <= 0)
+            runTimer->setInterval(0);
+    });
     connect(runTimer,       &QTimer::timeout,      this, &MainWindow::tickOnce);
 
     // Initial display
