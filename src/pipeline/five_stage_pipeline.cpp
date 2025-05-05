@@ -23,6 +23,7 @@ void five_stage_pipeline::fetch() {
     if_valid   = true;
 
     regs.PC += 1;
+    regs.IR = inst;
     if (ifr.opcode == OP::HLT_OP) halted = true;
 }
 

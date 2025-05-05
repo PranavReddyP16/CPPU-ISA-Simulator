@@ -58,8 +58,10 @@ MainWindow::MainWindow(QWidget *parent)
     auto *modeLayout = new QHBoxLayout;
     chkCache    = new QCheckBox("Cache Enable");
     chkPipeline = new QCheckBox("Pipeline Enable");
+    chkMemDelay = new QCheckBox("Memory Delay Enable");
     chkCache->setChecked(true);
     chkPipeline->setChecked(true);
+    chkMemDelay->setChecked(true);
     connect(chkCache, &QCheckBox::stateChanged, [this](int state) {
         if (state == Qt::Checked)
             cache->enabled = true;
@@ -72,8 +74,15 @@ MainWindow::MainWindow(QWidget *parent)
         else
             pipeline->enabled = false;
     });
+    connect(chkMemDelay, &QCheckBox::stateChanged, [this](int state) {
+        if (state == Qt::Checked)
+            memory->delay_en = true;
+        else
+            memory->delay_en = false;
+    });
     modeLayout->addWidget(chkCache);
     modeLayout->addWidget(chkPipeline);
+    modeLayout->addWidget(chkMemDelay);
     modeLayout->addStretch();
     mainLayout->addLayout(modeLayout);
 
@@ -216,6 +225,7 @@ MainWindow::MainWindow(QWidget *parent)
             runTimer->setInterval(0);
     });
     connect(runTimer,       &QTimer::timeout,      this, &MainWindow::tickOnce);
+    connect(memory,        &Memory::memoryAccessed, this, &MainWindow::memoryAccessed);
 
     // Initial display
     refreshGui();
@@ -328,7 +338,7 @@ void MainWindow::refreshGui() {
         if (valid[0] && addr == pipeline->ifr.PC) stage = "IF";
         else if (valid[1] && addr == pipeline->idr.PC) stage = "ID";
         else if (valid[2] && addr == pipeline->exr.PC) stage = "EX";
-        else if (valid[3] && addr == pipeline->memr.mem_address) stage = "MEM";
+        else if (valid[3] && addr == pipeline->memr.PC) stage = "MEM";
         else if (valid[4] && addr == pipeline->wbr.PC) stage = "WB";
 
         // Update the Pipeline Stage column
@@ -363,7 +373,7 @@ void MainWindow::refreshGui() {
         addrItem->setTextAlignment(Qt::AlignCenter);
 
         for(int col=0; col<16; ++col) {
-            uint64_t b = memory->read_data(base+col);
+            uint64_t b = (*memory)[base+col];
             auto *it = memoryTable->item(row, col+1);
             it->setText(hex8(b));
             it->setTextAlignment(Qt::AlignCenter);
