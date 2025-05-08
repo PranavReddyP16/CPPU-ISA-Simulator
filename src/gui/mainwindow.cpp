@@ -181,8 +181,8 @@ MainWindow::MainWindow(QWidget *parent)
     mainLayout->addWidget(new QLabel("Cache", this));
     cacheTable = new QTableWidget(Cache::numSets(), 4+CACHE_LINE_SIZE, this);
     cacheTable->setHorizontalHeaderLabels({"Set","Tag","Valid","Dirty"});
-    // for (int i = 0; i < CACHE_LINE_SIZE; ++i)
-    //     cacheTable->setHorizontalHeaderItem(4 + i, new QTableWidgetItem(QString("Data[%1]").arg(i)));
+    for (int i = 0; i < CACHE_LINE_SIZE; ++i)
+        cacheTable->setHorizontalHeaderItem(4 + i, new QTableWidgetItem(QString("Data[%1]").arg(i)));
     cacheTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     cacheTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     cacheTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
