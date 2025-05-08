@@ -5,13 +5,19 @@
 #include "memory/Memory.h"
 
 /* helper: read next integer, tolerate a trailing “,” */
-static uint64_t next_int(std::istringstream &iss)
-{
+uint64_t Assembler::next_int(std::istringstream &iss) {
     std::string tok;
-    if (!(iss >> tok)) throw std::runtime_error("Assembler: missing / bad operand");
+    if (!(iss >> tok)) 
+        throw std::runtime_error("Assembler: missing / bad operand");
 
-    if (tok.back()==',') tok.pop_back();      // drop comma
-    return std::stoull(tok, nullptr, 0);      // auto 0x / decimal detect
+    if (tok.back()==',') 
+        tok.pop_back();      // drop comma
+
+    auto it = symbolTable.find(tok);
+    if (it != symbolTable.end())
+        return it->second;
+    else
+        return std::stoull(tok, nullptr, 0);      // auto 0x / decimal detect
 }
 
 Assembler::Assembler(Memory *m): mem(m) {}
@@ -87,6 +93,14 @@ uint64_t Assembler::assembleInstrxn(const std::string &line)
         uint64_t r2 = (op=="POPCNT") ? next_int(iss) : 0;
         enc |= (r1 &7)<<55;
         enc |= (r2 &7)<<52;
+    } else if (op=="CALL"||
+               op=="JMP"||op=="JE"||op=="JNE"||
+               op=="JG"||op=="JL"||op=="JZ") {
+        uint32_t addr = next_int(iss);
+        enc |= addr << 26;
+    } else if (op=="RET"||op=="HLT") { 
+    } else {
+        throw std::runtime_error("Assembler: unknown instruction "+op);
     }
 
     return enc;
@@ -99,18 +113,22 @@ void Assembler::loadProgram(const std::string &file)
     if (!f) throw std::runtime_error("Cannot open "+file);
 
     instrxnEntries.clear();
-    std::string ln;
+    symbolTable.clear();
+
+    std::string ln; int addr = 0;
     while (std::getline(f,ln))
-    {
-        if (ln.empty()||ln[0]==';'||ln[0]=='#') 
-            instrxnEntries.push_back({ln, std::nullopt});
+        if (ln.empty() || ln[0]==';' || ln[0]=='#')
+            instrxnEntries.push_back({std::nullopt, ln, std::nullopt});
+        else if (ln.back() == ':')
+            symbolTable[ln.substr(0, ln.size()-1)] = addr;
         else 
-            instrxnEntries.push_back({ln, assembleInstrxn(ln)});
-    }
+            instrxnEntries.push_back({addr++, ln, std::nullopt});
     f.close();
 
-    int addr = 0;
-    for (size_t i=0;i<instrxnEntries.size();++i)
-        if (instrxnEntries[i].encoded.has_value())
-            mem->write_data(addr++, instrxnEntries[i].encoded.value());
+    for (size_t i=0; i < instrxnEntries.size(); ++i) {
+        if (instrxnEntries[i].addr.has_value()) {
+            instrxnEntries[i].encoded = assembleInstrxn(instrxnEntries[i].instrxnStr);
+            mem->write_data(instrxnEntries[i].addr.value(), instrxnEntries[i].encoded.value());
+        }
+    }
 }

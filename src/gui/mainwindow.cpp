@@ -58,8 +58,10 @@ MainWindow::MainWindow(QWidget *parent)
     auto *modeLayout = new QHBoxLayout;
     chkCache    = new QCheckBox("Cache Enable");
     chkPipeline = new QCheckBox("Pipeline Enable");
+    chkMemDelay = new QCheckBox("Memory Delay Enable");
     chkCache->setChecked(true);
     chkPipeline->setChecked(true);
+    chkMemDelay->setChecked(true);
     connect(chkCache, &QCheckBox::stateChanged, [this](int state) {
         if (state == Qt::Checked)
             cache->enabled = true;
@@ -72,8 +74,15 @@ MainWindow::MainWindow(QWidget *parent)
         else
             pipeline->enabled = false;
     });
+    connect(chkMemDelay, &QCheckBox::stateChanged, [this](int state) {
+        if (state == Qt::Checked)
+            memory->delay_en = true;
+        else
+            memory->delay_en = false;
+    });
     modeLayout->addWidget(chkCache);
     modeLayout->addWidget(chkPipeline);
+    modeLayout->addWidget(chkMemDelay);
     modeLayout->addStretch();
     mainLayout->addLayout(modeLayout);
 
@@ -170,13 +179,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Cache
     mainLayout->addWidget(new QLabel("Cache", this));
-    cacheTable = new QTableWidget(Cache::numSets(), 5, this);
-    cacheTable->setHorizontalHeaderLabels({"Set","Tag","Valid","Dirty","Data"});
+    cacheTable = new QTableWidget(Cache::numSets(), 4+CACHE_LINE_SIZE, this);
+    cacheTable->setHorizontalHeaderLabels({"Set","Tag","Valid","Dirty"});
+    // for (int i = 0; i < CACHE_LINE_SIZE; ++i)
+    //     cacheTable->setHorizontalHeaderItem(4 + i, new QTableWidgetItem(QString("Data[%1]").arg(i)));
     cacheTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     cacheTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     cacheTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     for(int r=0;r<Cache::numSets();++r)
-        for(int c=0;c<5;++c)
+        for(int c=0;c<4+CACHE_LINE_SIZE;++c)
             cacheTable->setItem(r,c,new QTableWidgetItem(""));
     mainLayout->addWidget(cacheTable);
 
@@ -216,6 +227,7 @@ MainWindow::MainWindow(QWidget *parent)
             runTimer->setInterval(0);
     });
     connect(runTimer,       &QTimer::timeout,      this, &MainWindow::tickOnce);
+    connect(memory,        &Memory::memoryAccessed, this, &MainWindow::memoryAccessed);
 
     // Initial display
     refreshGui();
@@ -245,20 +257,19 @@ void MainWindow::actionLoadProgram() {
     assembler->loadProgram(fn.toStdString());
     const auto &prog = assembler->getProgram();
 
-    int addr = 0;
     programTable->setRowCount(prog.size());
-    for(int i=0;i<prog.size();++i){
-        if (prog[i].encoded.has_value()) {
+    for(int i=0; i < prog.size(); ++i){
+        if (prog[i].addr.has_value()) {
             auto *breakpointChk = new QCheckBox(this);
             programTable->setCellWidget(i,0, breakpointChk);
             connect(breakpointChk, &QCheckBox::stateChanged, [=](int state) {
                 if (state == Qt::Checked)
-                    breakpoints[addr] = true;
+                    breakpoints[prog[i].addr.value()] = true;
                 else
-                    breakpoints[addr] = false;
+                    breakpoints[prog[i].addr.value()] = false;
             });
 
-            programTable->setItem(i,1, new QTableWidgetItem(hex4(addr++)));
+            programTable->setItem(i,1, new QTableWidgetItem(hex4(prog[i].addr.value())));
             programTable->setItem(i,2, new QTableWidgetItem(hex8(prog[i].encoded.value())));
         }
 
@@ -328,7 +339,7 @@ void MainWindow::refreshGui() {
         if (valid[0] && addr == pipeline->ifr.PC) stage = "IF";
         else if (valid[1] && addr == pipeline->idr.PC) stage = "ID";
         else if (valid[2] && addr == pipeline->exr.PC) stage = "EX";
-        else if (valid[3] && addr == pipeline->memr.mem_address) stage = "MEM";
+        else if (valid[3] && addr == pipeline->memr.PC) stage = "MEM";
         else if (valid[4] && addr == pipeline->wbr.PC) stage = "WB";
 
         // Update the Pipeline Stage column
@@ -363,7 +374,7 @@ void MainWindow::refreshGui() {
         addrItem->setTextAlignment(Qt::AlignCenter);
 
         for(int col=0; col<16; ++col) {
-            uint64_t b = memory->read_data(base+col);
+            uint64_t b = (*memory)[base+col];
             auto *it = memoryTable->item(row, col+1);
             it->setText(hex8(b));
             it->setTextAlignment(Qt::AlignCenter);
@@ -373,13 +384,13 @@ void MainWindow::refreshGui() {
 
     // Cache view
     int sets = Cache::numSets();
-    cacheTable->setRowCount(sets);
+    // cacheTable->setRowCount(sets);
     for(int s=0; s<sets; ++s){
         cacheTable->item(s,0)->setText(QString::number(s));
         cacheTable->item(s,0)->setTextAlignment(Qt::AlignCenter);
 
         const auto &line = cache->getSet(s)[0];
-        cacheTable->item(s,1)->setText(QString::number(line.tag,16).toUpper());
+        cacheTable->item(s,1)->setText(QString("0x%1").arg(line.tag, (CACHE_LINE_TAG_BITS + 3) / 4, 16, QChar('0')));
         cacheTable->item(s,1)->setTextAlignment(Qt::AlignCenter);
 
         cacheTable->item(s,2)->setText(line.valid ? "1":"0");
@@ -388,10 +399,9 @@ void MainWindow::refreshGui() {
         cacheTable->item(s,3)->setText(line.dirty ? "1":"0");
         cacheTable->item(s,3)->setTextAlignment(Qt::AlignCenter);
 
-        QStringList data;
+        int col = 4;
         for(auto d: line.data)
-            data << QString::number(mem_dtype_to_int(d));
-        cacheTable->item(s,4)->setText(data.join(","));
-        cacheTable->item(s,4)->setTextAlignment(Qt::AlignCenter);
+            cacheTable->item(s,col++)->setText(hex8(d));
+        // cacheTable->item(s,4)->setTextAlignment(Qt::AlignCenter);
     }
 }

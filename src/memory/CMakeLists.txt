@@ -9,6 +9,8 @@ set(MEMORY_SRCS
     utils.cpp         # ← added so mem_dtype_to_int, int_to_mem_dtype, print_data, etc. get compiled
 )
 
+set(CMAKE_AUTOMOC ON)
+
 add_library(memory STATIC ${MEMORY_SRCS})
 
 target_include_directories(memory
@@ -16,6 +18,11 @@ target_include_directories(memory
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/src
+)
+
+target_link_libraries(memory
+    PUBLIC
+        Qt6::Core
 )
 
 # No need to link Qt here; backend is GUI-free

@@ -10,11 +10,13 @@ void Memory::reset() {
     }
 }
 
-MemoryDataType Memory::read_data(int address) const {
+MemoryDataType Memory::read_data(int address) {
+    if (delay_en) emit memoryAccessed();
     return data[address];
 }
 
 void Memory::write_data(int address, MemoryDataType value) {
+    if (delay_en) emit memoryAccessed();
     data[address] = value;
 }
 

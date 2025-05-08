@@ -28,6 +28,7 @@ private slots:
 private:
     QCheckBox            *chkCache;
     QCheckBox            *chkPipeline;
+    QCheckBox            *chkMemDelay;
 
     QPushButton          *btnRun;
     QPushButton          *btnHalt;
@@ -53,4 +54,7 @@ private:
     bool                  breakpoints[MEMORY_SIZE];
     int                   cycles = 0;
     int                   memRows = 0;
+
+private slots:
+    void memoryAccessed() { cycles += 100; }
 };
