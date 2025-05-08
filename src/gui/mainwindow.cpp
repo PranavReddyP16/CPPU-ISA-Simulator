@@ -255,20 +255,19 @@ void MainWindow::actionLoadProgram() {
     assembler->loadProgram(fn.toStdString());
     const auto &prog = assembler->getProgram();
 
-    int addr = 0;
     programTable->setRowCount(prog.size());
-    for(int i=0;i<prog.size();++i){
-        if (prog[i].encoded.has_value()) {
+    for(int i=0; i < prog.size(); ++i){
+        if (prog[i].addr.has_value()) {
             auto *breakpointChk = new QCheckBox(this);
             programTable->setCellWidget(i,0, breakpointChk);
             connect(breakpointChk, &QCheckBox::stateChanged, [=](int state) {
                 if (state == Qt::Checked)
-                    breakpoints[addr] = true;
+                    breakpoints[prog[i].addr.value()] = true;
                 else
-                    breakpoints[addr] = false;
+                    breakpoints[prog[i].addr.value()] = false;
             });
 
-            programTable->setItem(i,1, new QTableWidgetItem(hex4(addr++)));
+            programTable->setItem(i,1, new QTableWidgetItem(hex4(prog[i].addr.value())));
             programTable->setItem(i,2, new QTableWidgetItem(hex8(prog[i].encoded.value())));
         }
 

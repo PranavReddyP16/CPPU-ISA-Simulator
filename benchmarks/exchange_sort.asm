@@ -7,7 +7,7 @@
 ; JL    label
 ; ISTORE reg, addr, len
 ; JMP   label
-; RET   ; end execution
+; HLT   ; end execution
 
 ; ---- prologue ----
 ILOAD 1, 0x00010000, 8    ; N   = 2048
@@ -67,4 +67,4 @@ ADD   2, 7                ; i++
 JMP   LOOP_I_CMP
 
 DONE_SORT:
-RET
+HLT

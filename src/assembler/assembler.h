@@ -9,7 +9,8 @@
 class Memory;
 
 struct InstrxnEntry {
-    std::string instrxnStr;
+    std::optional<int>      addr;
+    std::string             instrxnStr;
     std::optional<uint64_t> encoded;
 };
 
@@ -48,8 +49,10 @@ private:
         {"HLT",    0b111111}
     };
 
-    Memory*                    mem;
-    std::vector<InstrxnEntry>  instrxnEntries;
+    Memory*                              mem;
+    std::vector<InstrxnEntry>            instrxnEntries;
+    std::unordered_map<std::string, int> symbolTable;
 
     uint64_t assembleInstrxn(const std::string &line);
+    uint64_t next_int(std::istringstream &iss);
 };
