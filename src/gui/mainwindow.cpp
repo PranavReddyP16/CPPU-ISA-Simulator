@@ -179,13 +179,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Cache
     mainLayout->addWidget(new QLabel("Cache", this));
-    cacheTable = new QTableWidget(Cache::numSets(), 5, this);
-    cacheTable->setHorizontalHeaderLabels({"Set","Tag","Valid","Dirty","Data"});
+    cacheTable = new QTableWidget(Cache::numSets(), 4+CACHE_LINE_SIZE, this);
+    cacheTable->setHorizontalHeaderLabels({"Set","Tag","Valid","Dirty"});
+    // for (int i = 0; i < CACHE_LINE_SIZE; ++i)
+    //     cacheTable->setHorizontalHeaderItem(4 + i, new QTableWidgetItem(QString("Data[%1]").arg(i)));
     cacheTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     cacheTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     cacheTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     for(int r=0;r<Cache::numSets();++r)
-        for(int c=0;c<5;++c)
+        for(int c=0;c<4+CACHE_LINE_SIZE;++c)
             cacheTable->setItem(r,c,new QTableWidgetItem(""));
     mainLayout->addWidget(cacheTable);
 
@@ -382,13 +384,13 @@ void MainWindow::refreshGui() {
 
     // Cache view
     int sets = Cache::numSets();
-    cacheTable->setRowCount(sets);
+    // cacheTable->setRowCount(sets);
     for(int s=0; s<sets; ++s){
         cacheTable->item(s,0)->setText(QString::number(s));
         cacheTable->item(s,0)->setTextAlignment(Qt::AlignCenter);
 
         const auto &line = cache->getSet(s)[0];
-        cacheTable->item(s,1)->setText(QString::number(line.tag,16).toUpper());
+        cacheTable->item(s,1)->setText(QString("0x%1").arg(line.tag, (CACHE_LINE_TAG_BITS + 3) / 4, 16, QChar('0')));
         cacheTable->item(s,1)->setTextAlignment(Qt::AlignCenter);
 
         cacheTable->item(s,2)->setText(line.valid ? "1":"0");
@@ -397,10 +399,9 @@ void MainWindow::refreshGui() {
         cacheTable->item(s,3)->setText(line.dirty ? "1":"0");
         cacheTable->item(s,3)->setTextAlignment(Qt::AlignCenter);
 
-        QStringList data;
+        int col = 4;
         for(auto d: line.data)
-            data << QString::number(mem_dtype_to_int(d));
-        cacheTable->item(s,4)->setText(data.join(","));
-        cacheTable->item(s,4)->setTextAlignment(Qt::AlignCenter);
+            cacheTable->item(s,col++)->setText(hex8(d));
+        // cacheTable->item(s,4)->setTextAlignment(Qt::AlignCenter);
     }
 }
