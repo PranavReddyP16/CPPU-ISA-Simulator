@@ -64,6 +64,8 @@ public:
     bool            mem_valid = false;
     bool            wb_valid  = false;
 
+    bool            stall     = false;
+    
     explicit five_stage_pipeline(Cache &c);
 
     void fetch();
